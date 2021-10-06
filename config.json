@@ -1,0 +1,8 @@
+{
+  "ip": "jp.mcfallout.net",
+  "port": "25565",
+  "username": "Minecraft帳號",
+  "password": "Minecraft密碼",
+  "auth": "microsoft",
+  "whitelist": ["指令白名單ID"]
+}
