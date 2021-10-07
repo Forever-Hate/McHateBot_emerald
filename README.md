@@ -3,7 +3,7 @@
 存綠寶石Bot
 ---------------------------------------------------
 **專門為廢土伺服器所製作**
-[#**點我前往下載McHateBot**](https://github.com/Forever-Hate/McHateBot/releases/tag/mineflayer)<br>
+[#**點我前往下載McHateBot**](https://github.com/Forever-Hate/McHateBot/releases)<br>
 ## 主要特色、功能
 ```
 1.可以不用開遊戲輸入指令&聊天  
