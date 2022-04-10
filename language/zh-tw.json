@@ -1,0 +1,68 @@
+{
+  "LOADING_DONE": "【McHatebot】 載入完成",
+  "SHUTDOWN": "正在關閉bot中...",
+
+  "NEED_MORE_CONTENT": "請輸入更多宣傳文字再使用此指令",
+  "NEXT_INDEX":"切換至第${trade_content_index}組宣傳文字",
+  "CONTENT":"內容:${trade_content}",
+
+  "DISCARD_MSG": "清垃圾!!",
+
+  "EXP": "等級: ${level} 總經驗值: ${points} 百分比: ${percent}%",
+  "HELP": "請至網頁上查詢相關指令",
+  "V": "當前bot版本為:${version}",
+  "ABOUT": ["bot: [McHateBot] 存綠機器人","作者DC: ${author_dc}","遊戲ID: ${author_id}","有任何問題或回饋歡迎私訊我"],
+
+  "REPLIED": "已回覆訊息",
+  "NO_ONE_REPLIED": "目前沒有需要回覆的人",
+  "OFFLINE": "${forward_ID}不在線上",
+  "FORWARD_TO_DC": "正在將您的訊息發送至DC",
+  "FORWARDED_IN_GAME": "${player}發送訊息",
+
+  "DC_BANNER": "==============================================================",
+  "DC_BOT_ONLINE": "   Discord bot 已上線 使用者名稱為: ${name}!",
+  "DC_BOT_OFFLINE": "   Discord bot 上線失敗! 失敗原因:${error}",
+  "DC_USER_FOUND": "                   已找到指定的DC使用者",
+  "DC_USER_NOT_FOUND": "                   找不到指定的DC使用者",
+  "DC_FORWARD_CHANNEL_NOT_FOUND": "未找到指定頻道",
+  "DC_NO_MATCH_COMMAND":"找不到符合的指令${command}",
+  "DC_COMMAND_EXECUTED": "指令已執行",
+  "DC_REPLIED_MSG": "正在將您的訊息發送給${reply_id}",
+  "DC_RESPONSE_MSG": "已回覆訊息給${reply_id}",
+
+  "FINANCE_CHECK_ASSET": "尚有餘額:${balance}元",
+  "FINANCE_PAY_FORMAT_ERROR": "pay用法:[pay ID $]",
+  "FINANCE_PAY_CONFIRM": "轉帳處理中...",
+  "FINANCE_PAY_BALANCE_NOT_ENOUGH_ERROR": "餘額不足，無法轉帳。餘額:${balance}元",
+  "FINANCE_NOT_IN_THE_SAME_SERVER_ERROR": "你跟我不在同一分流 請TP過來",
+  "FINANCE_TRANSFER_MONEY_TO_SOMEONE": "${player} 想轉帳 ${expense}元給你 請TP過來",
+  "FINANCE_PREPARE_TRANSFER_MONEY": "${interval}秒後即將轉帳",
+  "FINANCE_PAY_COMPLETE": "轉帳成功，已轉帳給${client} ${expense}元，剩餘餘額:${balance}元",
+  "FINANCE_PAY_FAIL": "轉帳失敗，請聯繫${player}",
+  "FINANCE_PAY_FAIL_TO_OWNER": "轉帳失敗，${client}無回應",
+  "FINANCE_TRANSFER_MONEY_CANCELED": "${player}已取消轉帳",
+  "FINANCE_TRANSFER_MONEY_CANCELED_TO_OWNER": "已取消轉帳",
+  "FINANCE_NO_TRANSFER_MONEY_ACROSS_SERVER": "目前沒有可取消的轉帳",
+
+  "AFK_ON_THE_WAY": "正在前往第${index}掛機地點...",
+  "AFK_FOUND_PLACE": "已抵達第${index}掛機地點",
+  "AFK_CANT_GO_THETE_ERROR": "無法前往${point}傳送點",
+  "AFK_FOUND_MINECART": "已找到礦車",
+  "AFK_NOT_FOUND_MINECART": "找尋礦車失敗",
+  "AFK_PLACE_NOT_FOUND": "找不到地點掛機",
+
+  "STORE_NO_ENOUGH_PLACE_ERROR": "如要使用多點卸盒功能，請先設定好公開傳送點",
+  "STORE_ON_THE_WAY": "正在前往第${index}卸盒地點...",
+  "STORE_FOUND_PLACE": "已抵達第${index}卸盒地點",
+  "STORE_CANT_GO_THETE_ERROR": "無法前往${point}傳送點",
+  "STORE_STOP":"停止卸盒!!",
+  "STORE_START": "開始卸盒裝綠寶石...",
+  "STORE_DONE": "卸盒結束",
+  "STORE_SHULKER_BOX_NOT_FOUND_ERROR": "找不到界伏盒"
+
+
+
+
+
+
+}
