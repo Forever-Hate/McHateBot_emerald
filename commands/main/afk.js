@@ -59,8 +59,8 @@ module.exports = function (local,settings){
 
 
                     async function check_and_tp_warp(jsonMsg) {
-                        let warp_regex = new RegExp(/^\[系統\] 傳送您到公共傳送點/)
-                        let no_warp_regex = new RegExp(/^\[系統\] 這個公共傳送點不存在!/)
+                        let warp_regex = new RegExp(/^\[系統\] 傳送您至公共傳送點/)
+                        let no_warp_regex = new RegExp(/^\[系統\] 找不到公共傳送點/)
                         if (warp_regex.test(jsonMsg.toString())) {
                             setTimeout(function () {
                                     if (bot.entity.position.x !== position.x && bot.entity.position.z !== position.z) {
@@ -162,7 +162,7 @@ module.exports = function (local,settings){
             }
 
             function check_category(){
-                let home_regex = new RegExp(/[0-9]{1,2} h[0-9]{1,2}_[0-9][0-9][0-9][0-9]/)
+                let home_regex = new RegExp(/^[0-9]{1,2}\s\w/)
                 if (home_regex.test(settings.afk_place[afk_place_index])) {
                     return false
                 } else {

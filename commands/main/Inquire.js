@@ -1,5 +1,5 @@
 let map = new Map()
-let version = "v1.1.6"
+let version = "v1.1.7"
 let exp = 0
 let author_dc = "I-love-minecraft#2437"
 let author_id = "Forever_Hate"
@@ -7,8 +7,6 @@ module.exports = function (local){
     initMap()
     this.experience = function (bot,playerid){
         exp = Math.round(bot.experience.progress * 100);
-        //let shulker_box_set_count = parseInt(bot.experience.points / 825280)
-        //let shulker_box_count = parseInt(bot.experience.points % 825280 / 12895)
         bot.chat(`/m ${playerid} ${get_content(bot,"EXP")}`);
     }
 

@@ -1,11 +1,11 @@
 {
   "name": "mchatebot",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "author": "I-love-minecraft#2437",
   "dependencies": {
     "discord.js": "^13.6.0",
-    "minecraft-data": "^2.111.0",
-    "mineflayer": "^3.15.0",
+    "minecraft-data": "^3.0.0",
+    "mineflayer": "^4.2.0",
     "pkg": "^5.5.2",
     "prismarine-tokens-fixed": "^1.1.2",
     "silly-datetime": "^0.1.2",

@@ -1,5 +1,4 @@
 const { Vec3 } = require('vec3')
-const { callbackify } = require('../promise_utils')
 
 module.exports = inject
 
@@ -7,7 +6,6 @@ const CARDINAL_DIRECTIONS = ['south', 'west', 'north', 'east']
 
 function inject (bot) {
   bot.isSleeping = false
-  const mcData = require('minecraft-data')(bot.version)
 
   const beds = new Set(['white_bed', 'orange_bed', 'magenta_bed', 'light_blue_bed', 'yellow_bed', 'lime_bed', 'pink_bed', 'gray_bed',
     'light_gray_bed', 'cyan_bed', 'purple_bed', 'blue_bed', 'brown_bed', 'green_bed', 'red_bed', 'black_bed', 'bed'])
@@ -25,7 +23,7 @@ function inject (bot) {
     }
 
     if (bot.supportFeature('blockStateId')) {
-      const state = bedBlock.stateId - mcData.blocksByStateId[bedBlock.stateId].minStateId
+      const state = bedBlock.stateId - bot.registry.blocksByStateId[bedBlock.stateId].minStateId
       const bitMetadata = state.toString(2).padStart(4, '0') // FACING (first 2 bits), PART (3rd bit), OCCUPIED (4th bit)
       metadata.part = bitMetadata[3] === '0'
       metadata.occupied = bitMetadata[2] === '0'
@@ -174,7 +172,7 @@ function inject (bot) {
   })
 
   bot.parseBedMetadata = parseBedMetadata
-  bot.wake = callbackify(wake)
-  bot.sleep = callbackify(sleep)
+  bot.wake = wake
+  bot.sleep = sleep
   bot.isABed = isABed
 }

@@ -1,12 +1,10 @@
 const assert = require('assert')
 const { once } = require('events')
-const { callbackify } = require('../promise_utils')
 
 module.exports = inject
 
-function inject (bot, { version }) {
-  const mcData = require('minecraft-data')(version)
-  const Item = require('prismarine-item')(version)
+function inject (bot) {
+  const Item = require('prismarine-item')(bot.version)
 
   let editBook
   if (bot.supportFeature('editBookIsPluginChannel')) {
@@ -29,7 +27,7 @@ function inject (bot, { version }) {
   async function write (slot, pages, author, title, signing) {
     assert.ok(slot >= 0 && slot <= 44, 'slot out of inventory range')
     const book = bot.inventory.slots[slot]
-    assert.ok(book && book.type === mcData.itemsByName.writable_book.id, `no book found in slot ${slot}`)
+    assert.ok(book && book.type === bot.registry.itemsByName.writable_book.id, `no book found in slot ${slot}`)
     const quickBarSlot = bot.quickBarSlot
     const moveToQuickBar = slot < 36
 
@@ -61,7 +59,7 @@ function inject (bot, { version }) {
     }
     if (signing) {
       if (bot.supportFeature('clientUpdateBookIdWhenSign')) {
-        book.type = mcData.itemsByName.written_book.id
+        book.type = bot.registry.itemsByName.written_book.id
       }
       book.nbt.value.author = {
         type: 'string',
@@ -83,11 +81,11 @@ function inject (bot, { version }) {
     return book
   }
 
-  bot.writeBook = callbackify(async (slot, pages) => {
+  bot.writeBook = async (slot, pages) => {
     await write(slot, pages, null, null, false)
-  })
+  }
 
-  bot.signBook = callbackify(async (slot, pages, author, title) => {
+  bot.signBook = async (slot, pages, author, title) => {
     await write(slot, pages, author, title, true)
-  })
+  }
 }

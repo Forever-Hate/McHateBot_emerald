@@ -24,13 +24,12 @@ const entityStatusEvents = {
   10: 'entityEatingGrass'
 }
 
-function inject (bot, { version }) {
-  const Entity = require('prismarine-entity')(version)
-  const objects = require('minecraft-data')(version).objects
-  const mobs = require('minecraft-data')(version).mobs
-  const entitiesArray = require('minecraft-data')(version).entitiesArray
-  const Item = require('prismarine-item')(version)
-  const ChatMessage = require('prismarine-chat')(version)
+function inject (bot) {
+  const { objects, mobs, entitiesArray } = bot.registry
+  const Entity = require('prismarine-entity')(bot.version) // TODO: update for prismarine-registry
+  const Item = require('prismarine-item')(bot.version)
+  const ChatMessage = require('prismarine-chat')(bot.version) // TODO: update for prismarine-registry
+
   // ONLY 1.17 has this destroy_entity packet which is the same thing as entity_destroy packet except the entity is singular
   // 1.17.1 reverted this change so this is just a simpler fix
   bot._client.on('destroy_entity', (packet) => {
@@ -588,6 +587,7 @@ function inject (bot, { version }) {
   }
 
   function useEntity (target, leftClick, x, y, z) {
+    const sneaking = bot.getControlState('sneak')
     if (x && y && z) {
       bot._client.write('use_entity', {
         target: target.id,
@@ -595,13 +595,13 @@ function inject (bot, { version }) {
         x,
         y,
         z,
-        sneaking: false
+        sneaking
       })
     } else {
       bot._client.write('use_entity', {
         target: target.id,
         mouse: leftClick,
-        sneaking: false
+        sneaking
       })
     }
   }

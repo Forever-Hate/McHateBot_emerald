@@ -1,9 +1,8 @@
-const { callbackify } = require('../promise_utils')
 
 module.exports = inject
 
 function inject (bot) {
-  const allowedWindowTypes = ['minecraft:generic', 'minecraft:chest', 'minecraft:dispenser', 'minecraft:shulker_box', 'minecraft:hopper', 'minecraft:container', 'minecraft:dropper']
+  const allowedWindowTypes = ['minecraft:generic', 'minecraft:chest', 'minecraft:dispenser', 'minecraft:shulker_box', 'minecraft:hopper', 'minecraft:container', 'minecraft:dropper', 'minecraft:trapped_chest']
 
   function matchWindowType (window) {
     for (const type of allowedWindowTypes) {
@@ -14,7 +13,7 @@ function inject (bot) {
 
   async function openContainer (containerToOpen) {
     let chest
-    if (containerToOpen.constructor.name === 'Block') {
+    if (containerToOpen.constructor.name === 'Block' && allowedWindowTypes.map(name => name.replace('minecraft:', '')).includes(containerToOpen.name)) {
       chest = await bot.openBlock(containerToOpen)
     } else if (containerToOpen.constructor.name === 'Entity') {
       chest = await bot.openEntity(containerToOpen)
@@ -26,7 +25,7 @@ function inject (bot) {
     return chest
   }
 
-  bot.openContainer = callbackify(openContainer)
-  bot.openChest = callbackify(openContainer)
-  bot.openDispenser = callbackify(openContainer)
+  bot.openContainer = openContainer
+  bot.openChest = openContainer
+  bot.openDispenser = openContainer
 }

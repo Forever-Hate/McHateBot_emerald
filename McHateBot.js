@@ -61,23 +61,24 @@ try {
 
             const whitelist = (config.whitelist);
             bot.on("message", async function (jsonMsg) {
-                let health = /目標生命 \: ❤❤❤❤❤❤❤❤❤❤ \/ ([\S]+)/g.exec(jsonMsg.toString()); //清除目標生命
-                if (health) {
+                const health = new RegExp(/目標生命 \: ❤❤❤❤❤❤❤❤❤❤ \/ ([\S]+)/g) //清除目標生命
+                if (health.test(jsonMsg.toString())) {
                     return;
                 } else {
                     console.log(jsonMsg.toAnsi());
                 }
                 if (jsonMsg.toString().startsWith(`[系統] `) &&
-                    jsonMsg.toString().toLowerCase().includes(`想要你傳送到 該玩家 的位置!`) ||
+                    jsonMsg.toString().toLowerCase().includes(`想要你傳送到 該玩家 的位置`) ||
                     jsonMsg.toString().toLowerCase().includes(`想要傳送到 你 的位置`)) {
                     let msg = jsonMsg.toString().split(/ +/g);
                     let playerid = msg[1]
                     if (whitelist.includes(playerid)) {
-                        bot.chat(`/tok`)
+                        bot.chat(`/tpaccept ${playerid}`)
                     } else {
-                        bot.chat(`/tno`)
+                        bot.chat(`/tpdeny ${playerid}`)
                     }
                 }
+
                 if (jsonMsg.toString().includes(`-> 您]`)) {  //偵測訊息包含為"-> 您]"
                     let msg = (jsonMsg.toString())
                     let dec = msg.split(/ +/g);
@@ -150,7 +151,6 @@ try {
                         reply.no_whitelisted_reply(bot, playerid, msg)
                     }
                 }
-
             })
             bot.once('kicked', (reason) => {
                 let time1 = sd.format(new Date(), 'YYYY-MM-DD HH-mm-ss'); //獲得系統時間

@@ -1,12 +1,11 @@
 const assert = require('assert')
 const { once } = require('events')
-const { callbackify } = require('../promise_utils')
 
 module.exports = inject
 
 function inject (bot, { version }) {
-  const Item = require('prismarine-item')(version)
-  const Recipe = require('prismarine-recipe')(version).Recipe
+  const Item = require('prismarine-item')(bot.version)
+  const Recipe = require('prismarine-recipe')(version).Recipe // TODO: update for prismarine-registry
 
   async function craft (recipe, count, craftingTable) {
     assert.ok(recipe)
@@ -226,7 +225,7 @@ function inject (bot, { version }) {
     return true
   }
 
-  bot.craft = callbackify(craft)
+  bot.craft = craft
   bot.recipesFor = recipesFor
   bot.recipesAll = recipesAll
 }

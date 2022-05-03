@@ -1,12 +1,11 @@
 const assert = require('assert')
 const { once } = require('events')
-const { callbackify } = require('../promise_utils')
 
 module.exports = inject
 
 function inject (bot, { version }) {
-  const mcData = require('minecraft-data')(version)
-  const Item = require('prismarine-item')(version)
+  const { entitiesByName } = bot.registry
+  const Item = require('prismarine-item')(bot.version)
 
   let selectTrade
   if (bot.supportFeature('useMCTrSel')) {
@@ -71,7 +70,7 @@ function inject (bot, { version }) {
   }
 
   async function openVillager (villagerEntity) {
-    const villagerType = mcData.entitiesByName.villager ? mcData.entitiesByName.villager.id : mcData.entitiesByName.Villager.id
+    const villagerType = entitiesByName.villager ? entitiesByName.villager.id : entitiesByName.Villager.id
     assert.strictEqual(villagerEntity.entityType, villagerType)
     let ready = false
 
@@ -249,6 +248,6 @@ function inject (bot, { version }) {
     await bot.transfer(options)
   }
 
-  bot.openVillager = callbackify(openVillager)
-  bot.trade = callbackify(trade)
+  bot.openVillager = openVillager
+  bot.trade = trade
 }
