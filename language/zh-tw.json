@@ -27,6 +27,7 @@
   "DC_FORWARD_CHANNEL_NOT_FOUND": "未找到指定頻道",
   "DC_NO_MATCH_COMMAND":"找不到符合的指令${command}",
   "DC_COMMAND_EXECUTED": "指令已執行",
+  "DC_NO_PERMISSION": "你沒有權限對我下指令或透過我回覆訊息",
   "DC_RESPONSE_MSG": "已回覆訊息給${reply_id}",
 
   "FINANCE_CHECK_ASSET": "尚有餘額:${balance}元",

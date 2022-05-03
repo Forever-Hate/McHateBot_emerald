@@ -68,7 +68,7 @@ module.exports = function (local, settings) {
                 if (msg.channel.id !== settings.channel_ID && msg.channel.type !== "DM") return;
                 if (msg.author.id !== settings.forward_DC_ID)
                 {
-                    msg.channel.send("No permission")
+                    msg.channel.send(`${get_content("DC_NO_PERMISSION")}`)
                     return;
                 }
                 if ((msg.channel.type === "DM" && !settings.enable_send_msg_to_channel)  || (msg.channel.type !== "DM" && settings.enable_send_msg_to_channel)) {
