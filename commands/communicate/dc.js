@@ -49,7 +49,7 @@ module.exports = function (local, settings) {
     }
 
     this.login = function (bot, enable_reply, token, DC_ID) {
-        client.on('ready', () => {
+        client.once('ready', () => {
             username = client.user.username
             console.log(`${get_content("DC_BANNER")}`)
             console.log(`${get_content("DC_BOT_ONLINE")}`)
@@ -63,6 +63,7 @@ module.exports = function (local, settings) {
             console.log(`${get_content("DC_BANNER")}`)
         })
         if (enable_reply) {
+            client.removeAllListeners('messageCreate')
             client.on('messageCreate', msg => {
                 if (msg.author.id === client.user.id) return
                 if (msg.channel.id !== settings.channel_ID && msg.channel.type !== "DM") return;

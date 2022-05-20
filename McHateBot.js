@@ -51,11 +51,10 @@ try {
                     rl.on('line', function (line) {
                         bot.chat(line)
                     })
-
-                    if(settings.enable_discord_bot)
-                    {
-                        discord.login(bot,settings.enable_reply_msg,settings.bot_token,settings.forward_DC_ID)
-                    }
+                }
+                if(settings.enable_discord_bot)
+                {
+                    discord.login(bot,settings.enable_reply_msg,settings.bot_token,settings.forward_DC_ID)
                 }
             });
 

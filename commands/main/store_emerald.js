@@ -33,7 +33,7 @@ module.exports = function (local, afk, settings) {
         bot.on("windowOpen", o)
         await find_box()
         async function o(window) {
-            if (window.title === "{\"color\":\"dark_green\",\"text\":\" 綠寶石銀行\"}" && another_item_list.length !== 0)
+            /*if (window.title === "{\"color\":\"dark_green\",\"text\":\" 綠寶石銀行\"}" && another_item_list.length !== 0)
             {
                 let promise = []
                 for (let i = 0; i < another_item_list.length; i++) {
@@ -50,8 +50,8 @@ module.exports = function (local, afk, settings) {
                 await Promise.all(promise).then(() => {
                     bot.chat(`/bank`)
                 })
-            }
-            else if (window.title === "{\"color\":\"dark_green\",\"text\":\" 綠寶石銀行\"}")
+            }*/
+            if (window.title === "{\"color\":\"dark_green\",\"text\":\" 綠寶石銀行\"}")
             {
                 bot.clickWindow(30, 0, 0).then(async () => {
                     window.close()
@@ -107,6 +107,7 @@ module.exports = function (local, afk, settings) {
                     window = await bot.openContainer(ShulkerboxToOpen)
                     clearTimeout(delay_open)
                     not_found_times = 0
+                    let count = 0
                     if (window.containerItems().length !== 0) {
                         for (let item of window.containerItems()) {
                             try {
@@ -114,14 +115,26 @@ module.exports = function (local, afk, settings) {
                                 if (item.type !== 687) {
                                     another_item_list.push(item)
                                 }
+                                else
+                                {
+                                    count += item.count
+                                }
                             } catch (e) {
                                 console.log(`cant take it:${e}`)
                             }
                         }
                         if (another_item_list.length !== 0) {
                             await tossItem(bot, another_item_list)
+                            another_item_list.splice(0,another_item_list.length)
+                        }
+                        if(count !== 1728)
+                        {
+                            bot.removeListener("windowOpen", o)
+                            await compensation(count,false)
+                            bot.on("windowOpen", o)
                         }
                         bot.chat('/bank')
+
                     } else {
                         window.close()
                         await bot.dig(ShulkerboxToOpen).then(async () => {
@@ -137,19 +150,12 @@ module.exports = function (local, afk, settings) {
                 }
         }
 
-        async function repair()
+        function compensation(count,first)
         {
-            return new Promise(async (resolve)=>{
-                let count = 0
-                for (let item of bot.inventory.items()) {
-                    if(item.type === 687)
-                    {
-                        count = count + item.count
-                    }
-                }
+            return new Promise((resolve => {
                 if(count !== 0)
                 {
-                    let times = (1728 - count) / 64
+                    let times = Math.floor((1728 - count) / 64)
                     let amount =  (1728 - count) % 64
                     let promise = []
                     bot.chat("/bank")
@@ -160,7 +166,7 @@ module.exports = function (local, afk, settings) {
                                     bot.clickWindow(20, 0, 0).then(() => {
                                         resolve()
                                     })
-                                }, 500 * (i+1))
+                                }, 1000 * (i+1))
                             })
                             promise.push(p)
                         }
@@ -170,15 +176,23 @@ module.exports = function (local, afk, settings) {
                                     bot.clickWindow(18, 0, 0).then(() => {
                                         resolve()
                                     })
-                                }, 500 * (i+1))
+                                }, 1000 * (i+1))
                             })
                             promise.push(p)
                         }
                         await Promise.all(promise).then(()=>{
-                            bot.clickWindow(30, 0, 0).then(() => {
-                                window.close()
+                            if(first)
+                            {
+                                bot.clickWindow(30,0,0).then(()=>{
+                                    window.close()
+                                    resolve()
+                                })
+                            }
+                            else
+                            {
                                 resolve()
-                            })
+                            }
+
                         })
                     })
                 }
@@ -186,6 +200,23 @@ module.exports = function (local, afk, settings) {
                 {
                     resolve()
                 }
+            }))
+
+        }
+
+        function repair()
+        {
+            return new Promise(async (resolve)=>{
+                let count = 0
+                for (let item of bot.inventory.items()) {
+                    if(item.type === 687)
+                    {
+                        count = count + item.count
+                    }
+                }
+                await compensation(count,true).then(()=>{
+                    resolve()
+                })
             })
         }
     }
