@@ -3,40 +3,22 @@ let clear_reply_id //清除ID延遲
 let map = new Map()
 module.exports = function (local,discord,settings){
     initMap()
-    this.no_whitelisted_reply = function (bot,playerid,msg){
+    this.no_whitelisted_reply = async function (bot,playerid,msg){
         if (settings.enable_reply_msg) {
             if(settings.enable_auto_reply)
             {
-                auto_reply()
+                await auto_reply()
             }
             else
             {
                 forward_msg()
             }
-        }
-        async function Error(jsonMsg)
-        {
-            if (jsonMsg.toString().includes("的玩家資料，您打錯ID了嗎?")) {
-                bot.chat(`/m ${playerid} ${get_content("OFFLINE")}`)
-                if (settings.enable_discord_bot)
-                {
-                    bot.chat(`/m ${playerid} ${get_content("FORWARD_TO_DC")}`)
-                    discord.send(playerid, msg.slice(8 + playerid.length))
-                }
-                bot.removeListener("message", Error)
-            } else if (jsonMsg.toString().includes(`${playerid}發送訊息`))
-            {
-                bot.removeListener("message", Error)
-            }
-        }
-        function forward_msg(){
             if (reply_id !== playerid || reply_id === "") {
                 reply_id = playerid
                 if (settings.enable_discord_bot) {
                     discord.modify_reply_id(playerid)
                 }
             }
-
             clearTimeout(clear_reply_id)
             clear_reply_id = setTimeout(() => {
                 reply_id = ""
@@ -44,8 +26,21 @@ module.exports = function (local,discord,settings){
                     discord.modify_reply_id("")
                 }
             }, settings.clear_reply_id_delay_time)
-
-            if (settings.enable_discord_bot && settings.directly_send_msg_to_dc) {
+        }
+        async function Error(jsonMsg)
+        {
+            if (jsonMsg.toString().includes("的玩家資料，您打錯ID了嗎?")) {
+                bot.chat(`/m ${playerid} ${get_content("OFFLINE")}`)
+                bot.chat(`/m ${playerid} ${get_content("FORWARD_TO_DC")}`)
+                discord.send(playerid, msg.slice(8 + playerid.length))
+                bot.removeListener("message", Error)
+            } else if (jsonMsg.toString().includes(`${playerid}發送訊息`))
+            {
+                bot.removeListener("message", Error)
+            }
+        }
+        function forward_msg(){
+            if (settings.directly_send_msg_to_dc) {
                 bot.chat(`/m ${playerid} ${get_content("FORWARD_TO_DC")}`)
                 discord.send(playerid, msg.slice(8 + playerid.length))
             } else {
@@ -53,7 +48,7 @@ module.exports = function (local,discord,settings){
                 bot.on("message", Error)
             }
         }
-        function auto_reply()
+        async function auto_reply()
         {
             let today = new Date()
             let week_regex = /[1-7]-[1-7]/
