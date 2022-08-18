@@ -6,9 +6,22 @@ let point = ""
 let map = new Map()
 module.exports = function (local, afk, settings) {
     initMap()
-    this.store_emerald = async function (bot, playerid, position) {
+    this.store_emerald = async function (bot, playerid, position,args) {
         isCommandedStop = false
-        store_place_index = 0
+        if(args.length === 2)
+        {
+            store_place_index = parseInt(args[1])
+            console.log(store_place_index)
+            if(store_place_index < 0 || store_place_index >= settings.store_place.length || isNaN(store_place_index))
+            {
+                bot.chat(`/m ${playerid} ${await get_content("STORE_FORMAT_ERROR")}`)
+                return
+            }
+        }
+        else
+        {
+            store_place_index = 0
+        }
         last_server = 0
         last_place = ""
         if (settings.enable_multiple_place_store) {
@@ -19,7 +32,6 @@ module.exports = function (local, afk, settings) {
             }
         } else {
             await this.store(bot, playerid)
-
         }
     }
 
@@ -33,25 +45,7 @@ module.exports = function (local, afk, settings) {
         bot.on("windowOpen", o)
         await find_box()
         async function o(window) {
-            if (window.title === "{\"color\":\"dark_green\",\"text\":\" 綠寶石銀行\"}" && another_item_list.length !== 0)
-            {
-                let promise = []
-                for (let i = 0; i < another_item_list.length; i++) {
-                    let p = new Promise(resolve => {
-                        setTimeout(() => {
-                            bot.clickWindow(20, 0, 0).then(() => {
-                                another_item_list.pop()
-                                resolve()
-                            })
-                        }, 500 * (i+1))
-                    })
-                    promise.push(p)
-                }
-                await Promise.all(promise).then(() => {
-                    bot.chat(`/bank`)
-                })
-            }
-            else if (window.title === "{\"color\":\"dark_green\",\"text\":\" 綠寶石銀行\"}")
+            if (window.title === "{\"color\":\"dark_green\",\"text\":\" 綠寶石銀行\"}")
             {
                 bot.clickWindow(30, 0, 0).then(async () => {
                     window.close()
@@ -107,6 +101,7 @@ module.exports = function (local, afk, settings) {
                     window = await bot.openContainer(ShulkerboxToOpen)
                     clearTimeout(delay_open)
                     not_found_times = 0
+                    let count = 0
                     if (window.containerItems().length !== 0) {
                         for (let item of window.containerItems()) {
                             try {
@@ -114,14 +109,26 @@ module.exports = function (local, afk, settings) {
                                 if (item.type !== 687) {
                                     another_item_list.push(item)
                                 }
+                                else
+                                {
+                                    count += item.count
+                                }
                             } catch (e) {
                                 console.log(`cant take it:${e}`)
                             }
                         }
                         if (another_item_list.length !== 0) {
                             await tossItem(bot, another_item_list)
+                            another_item_list.splice(0,another_item_list.length)
+                        }
+                        if(count !== 1728)
+                        {
+                            bot.removeListener("windowOpen", o)
+                            await compensation(count)
+                            bot.on("windowOpen", o)
                         }
                         bot.chat('/bank')
+
                     } else {
                         window.close()
                         await bot.dig(ShulkerboxToOpen).then(async () => {
@@ -137,7 +144,51 @@ module.exports = function (local, afk, settings) {
                 }
         }
 
-        async function repair()
+        function compensation(count)
+        {
+            return new Promise((resolve => {
+                if(count !== 0)
+                {
+                    let times = Math.floor(count / 64)
+                    let amount =  count % 64
+                    let promise = []
+                    bot.chat("/bank")
+                    bot.once("windowOpen",async (window)=>{
+                        for (let i = 0; i < times; i++) {
+                            let p = new Promise(resolve => {
+                                setTimeout(() => {
+                                    bot.clickWindow(29, 0, 0).then(() => {
+                                        resolve()
+                                    })
+                                }, 1000 * (i+1))
+                            })
+                            promise.push(p)
+                        }
+                        for (let i = 0; i < amount; i++) {
+                            let p = new Promise(resolve => {
+                                setTimeout(() => {
+                                    bot.clickWindow(27, 0, 0).then(() => {
+                                        resolve()
+                                    })
+                                }, 1000 * (i+1))
+                            })
+                            promise.push(p)
+                        }
+                        await Promise.all(promise).then(()=>{
+                            window.close()
+                            resolve()
+                        })
+                    })
+                }
+                else
+                {
+                    resolve()
+                }
+            }))
+
+        }
+
+        function repair()
         {
             return new Promise(async (resolve)=>{
                 let count = 0
@@ -147,45 +198,9 @@ module.exports = function (local, afk, settings) {
                         count = count + item.count
                     }
                 }
-                if(count !== 0)
-                {
-                    let times = (1728 - count) / 64
-                    let amount =  (1728 - count) % 64
-                    let promise = []
-                    bot.chat("/bank")
-                    bot.once("windowOpen",async (window)=>{
-                        for (let i = 0; i < times; i++) {
-                            let p = new Promise(resolve => {
-                                setTimeout(() => {
-                                    bot.clickWindow(20, 0, 0).then(() => {
-                                        resolve()
-                                    })
-                                }, 500 * (i+1))
-                            })
-                            promise.push(p)
-                        }
-                        for (let i = 0; i < amount; i++) {
-                            let p = new Promise(resolve => {
-                                setTimeout(() => {
-                                    bot.clickWindow(18, 0, 0).then(() => {
-                                        resolve()
-                                    })
-                                }, 500 * (i+1))
-                            })
-                            promise.push(p)
-                        }
-                        await Promise.all(promise).then(()=>{
-                            bot.clickWindow(30, 0, 0).then(() => {
-                                window.close()
-                                resolve()
-                            })
-                        })
-                    })
-                }
-                else
-                {
+                await compensation(count).then(()=>{
                     resolve()
-                }
+                })
             })
         }
     }
@@ -302,7 +317,7 @@ module.exports = function (local, afk, settings) {
 
                     async function check_change_server(jsonMsg) {
                         let change_server_done = false
-                        let change_server_done_regex = new RegExp(/^\[系統\] 讀取統計資料成功./)
+                        let change_server_done_regex = new RegExp(/^\[統計系統\] 讀取統計資料成功./)
                         let same_server_regex = new RegExp(/You are already connected to this server!/)
                         if (change_server_done_regex.test(jsonMsg.toString())) {
                             change_server_done = true
@@ -326,7 +341,7 @@ module.exports = function (local, afk, settings) {
                     bot.chat(`/homes ${home_point}`)
 
                     async function check_tp_home(jsonMsg) {
-                        let no_home_regex = new RegExp(/^家 ：/)
+                        let no_home_regex = new RegExp(/^家點：/)
                         let no_home = false
                         if (no_home_regex.test(jsonMsg.toString())) {
                             no_home = true

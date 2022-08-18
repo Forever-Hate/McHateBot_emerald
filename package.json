@@ -1,6 +1,6 @@
 {
   "name": "mchatebot",
-  "version": "1.1.7",
+  "version": "1.1.9",
   "author": "I-love-minecraft#2437",
   "dependencies": {
     "discord.js": "^13.6.0",
@@ -8,8 +8,7 @@
     "mineflayer": "^4.2.0",
     "pkg": "^5.5.2",
     "prismarine-tokens-fixed": "^1.1.2",
-    "silly-datetime": "^0.1.2",
-    "typescript": "^4.4.3"
+    "silly-datetime": "^0.1.2"
   },
   "bin": "index.js",
   "pkg": {

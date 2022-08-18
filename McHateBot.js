@@ -51,11 +51,10 @@ try {
                     rl.on('line', function (line) {
                         bot.chat(line)
                     })
-
-                    if(settings.enable_discord_bot)
-                    {
-                        discord.login(bot,settings.enable_reply_msg,settings.bot_token,settings.forward_DC_ID)
-                    }
+                }
+                if(settings.enable_discord_bot)
+                {
+                    discord.login(bot,settings.enable_reply_msg,settings.bot_token,settings.forward_DC_ID)
                 }
             });
 
@@ -102,7 +101,7 @@ try {
                                 break;
                             case "start": //開始存綠
                             {
-                                await store.store_emerald(bot,playerid,bot.entity.position)
+                                await store.store_emerald(bot,playerid,bot.entity.position,args)
                                 break
                             }
                             case "stop": //暫停存綠

@@ -49,7 +49,7 @@ module.exports = function (local, settings) {
     }
 
     this.login = function (bot, enable_reply, token, DC_ID) {
-        client.on('ready', () => {
+        client.once('ready', () => {
             username = client.user.username
             console.log(`${get_content("DC_BANNER")}`)
             console.log(`${get_content("DC_BOT_ONLINE")}`)
@@ -63,6 +63,7 @@ module.exports = function (local, settings) {
             console.log(`${get_content("DC_BANNER")}`)
         })
         if (enable_reply) {
+            client.removeAllListeners('messageCreate')
             client.on('messageCreate', msg => {
                 if (msg.author.id === client.user.id) return
                 if (msg.channel.id !== settings.channel_ID && msg.channel.type !== "DM") return;
@@ -89,10 +90,11 @@ module.exports = function (local, settings) {
                     {
                         msg.channel.messages.fetch(msg.reference.messageId)  //取得回覆訊息的文字內容
                             .then(message => {
+                                console.log(message.content)
                                 let splited_msg = message.content.split(' ')
-                                if (splited_msg.length === 3) {
+                                if (splited_msg.length >= 3) {
                                     reply_id = splited_msg[0]
-                                } else if (splited_msg.length === 1) {
+                                } else if (splited_msg.length >= 1) {
                                     reply_id = splited_msg[0].substring(6)
                                 }
                                 if(msg.mentions.repliedUser.id === client.user.id)

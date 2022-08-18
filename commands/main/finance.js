@@ -3,6 +3,7 @@ let balance = 0
 let expense = 0
 let commander =""
 let client = ""
+let reason = ""
 let transfer_interval = 0
 let no_transfer_twice = true
 let isCommandedStop = false
@@ -15,12 +16,16 @@ module.exports = function (local,log,settings){
     }
 
     this.pay = async function (bot,playerid,args){
-        if (args.length === 3) {
+        if (args.length === 3 || args.length === 4) {
             balance = await get_money(bot)
             client = args[1];
-            expense= parseInt(args[2],10);
+            expense = parseInt(args[2],10);
             no_transfer_twice = true
             commander = playerid
+            if(args.length === 4)
+            {
+                reason = args[3]
+            }
             if(balance >= expense)
             {
                 await transfer(bot,playerid)
@@ -115,7 +120,7 @@ module.exports = function (local,log,settings){
                 bot.chat(`/m ${playerid} ${await get_content("FINANCE_PAY_COMPLETE")}`)
                 if (settings.enable_pay_logs)
                 {
-                    log.writePayLog(playerid,client,formatPrice(expense),formatPrice(balance))
+                    log.writePayLog(playerid,client,formatPrice(expense),formatPrice(balance),reason)
                 }
                 bot.removeListener('message',confirm_transfer)
             }
@@ -130,9 +135,9 @@ module.exports = function (local,log,settings){
     async function get_money(bot){
         return new Promise(resolve => {
             bot.chat("/money")
-            bot.awaitMessage(/^金錢 ： /).then(string => {
+            bot.awaitMessage(/^金錢：/).then(string => {
                 let m = string.replaceAll(",","")
-                let money = parseInt(m.slice(6, m.length))
+                let money = parseInt(m.slice(4, m.length))
                 resolve(money)
             })
         })

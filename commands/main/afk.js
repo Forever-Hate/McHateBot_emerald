@@ -114,7 +114,7 @@ module.exports = function (local,settings){
                         bot.chat(`/ts ${server}`)
                         async function check_change_server(jsonMsg) {
                             let change_server_done = false
-                            let change_server_done_regex = new RegExp(/^\[系統\] 讀取統計資料成功./)
+                            let change_server_done_regex = new RegExp(/^\[統計系統\] 讀取統計資料成功./)
                             let same_server_regex = new RegExp(/You are already connected to this server!/)
                             if (change_server_done_regex.test(jsonMsg.toString())) {
                                 change_server_done = true
