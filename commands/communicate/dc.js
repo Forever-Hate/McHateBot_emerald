@@ -77,7 +77,7 @@ module.exports = function (local, settings) {
                         command = msg.content.replace(settings.dc_cmd_prefix, "").split(" ")[0]
                         switch (command) {
                             case "cmd":
-                                bot.chat(msg.content.slice(4))
+                                bot.chat(msg.content.slice(5))
                                 this.send("", get_content("DC_COMMAND_EXECUTED"))
                                 break;
                             default: {
