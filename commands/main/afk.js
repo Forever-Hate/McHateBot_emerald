@@ -114,8 +114,7 @@ module.exports = function (local,settings){
                         bot.chat(`/ts ${server}`)
                         async function check_change_server(jsonMsg) {
                             let change_server_done = false
-                            let change_server_done_regex = new RegExp(/^\[統計系統\] 讀取統計資料成功./)
-                            let same_server_regex = new RegExp(/You are already connected to this server!/)
+                            let change_server_done_regex = new RegExp(/^\[系統\] 讀取人物成功。/)
                             if (change_server_done_regex.test(jsonMsg.toString())) {
                                 change_server_done = true
                                 setTimeout(() => {
@@ -127,9 +126,6 @@ module.exports = function (local,settings){
                                     }
                                 }, 10000)
                             }
-                            else if (same_server_regex.test(jsonMsg.toString())){
-                                checkTPServer = true
-                            }
                         }
                     }
 
@@ -139,7 +135,7 @@ module.exports = function (local,settings){
                         bot.on('message', check_tp_home)
                         bot.chat(`/homes ${home_point}`)
                         async function check_tp_home(jsonMsg) {
-                            let no_home_regex = new RegExp(/^家 ：/)
+                            let no_home_regex = new RegExp(/^家點：/)
                             let no_home = false
                             if (no_home_regex.test(jsonMsg.toString())) {
                                 no_home = true

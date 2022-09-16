@@ -1,5 +1,5 @@
 let map = new Map()
-let version = "v1.1.7"
+let version = "v1.1.92"
 let exp = 0
 let author_dc = "I-love-minecraft#2437"
 let author_id = "Forever_Hate"

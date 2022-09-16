@@ -11,7 +11,6 @@ module.exports = function (local, afk, settings) {
         if(args.length === 2)
         {
             store_place_index = parseInt(args[1])
-            console.log(store_place_index)
             if(store_place_index < 0 || store_place_index >= settings.store_place.length || isNaN(store_place_index))
             {
                 bot.chat(`/m ${playerid} ${await get_content("STORE_FORMAT_ERROR")}`)
@@ -45,7 +44,7 @@ module.exports = function (local, afk, settings) {
         bot.on("windowOpen", o)
         await find_box()
         async function o(window) {
-            if (window.title === "{\"color\":\"dark_green\",\"text\":\" 綠寶石銀行\"}")
+            if (window.title === "{\"color\":\"dark_gray\",\"text\":\"綠寶石銀行\"}")
             {
                 bot.clickWindow(30, 0, 0).then(async () => {
                     window.close()
@@ -317,8 +316,7 @@ module.exports = function (local, afk, settings) {
 
                     async function check_change_server(jsonMsg) {
                         let change_server_done = false
-                        let change_server_done_regex = new RegExp(/^\[統計系統\] 讀取統計資料成功./)
-                        let same_server_regex = new RegExp(/You are already connected to this server!/)
+                        let change_server_done_regex = new RegExp(/^\[系統\] 讀取人物成功。/)
                         if (change_server_done_regex.test(jsonMsg.toString())) {
                             change_server_done = true
                             setTimeout(() => {
@@ -329,8 +327,6 @@ module.exports = function (local, afk, settings) {
                                     checkTPServer = false
                                 }
                             }, 10000)
-                        } else if (same_server_regex.test(jsonMsg.toString())) {
-                            checkTPServer = true
                         }
                     }
                 }

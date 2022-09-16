@@ -1,6 +1,6 @@
 {
   "name": "mchatebot",
-  "version": "1.1.9",
+  "version": "1.1.92",
   "author": "I-love-minecraft#2437",
   "dependencies": {
     "discord.js": "^13.6.0",
