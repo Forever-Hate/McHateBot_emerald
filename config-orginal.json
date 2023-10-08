@@ -1,0 +1,11 @@
+{
+  "ip": "jp.mcfallout.net",
+  "port": -1,
+  "username": "",
+  "version":"1.20.1",
+  "auth": "microsoft",
+  "language": "zh-tw",
+  "whitelist": [
+    "請填入minecraft白名單玩家ID(非bot本身玩家ID，看哪個玩家能夠下指令)"
+  ]
+}

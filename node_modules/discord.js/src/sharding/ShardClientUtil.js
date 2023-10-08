@@ -1,9 +1,10 @@
 'use strict';
 
 const process = require('node:process');
-const { Error } = require('../errors');
-const { Events } = require('../util/Constants');
-const Util = require('../util/Util');
+const { calculateShardId } = require('@discordjs/util');
+const { DiscordjsError, DiscordjsTypeError, ErrorCodes } = require('../errors');
+const Events = require('../util/Events');
+const { makeError, makePlainError } = require('../util/Util');
 
 /**
  * Helper class for sharded clients spawned as a child process/worker, such as from a {@link ShardingManager}.
@@ -29,29 +30,38 @@ class ShardClientUtil {
      */
     this.parentPort = null;
 
-    if (mode === 'process') {
-      process.on('message', this._handleMessage.bind(this));
-      client.on('ready', () => {
-        process.send({ _ready: true });
-      });
-      client.on('disconnect', () => {
-        process.send({ _disconnect: true });
-      });
-      client.on('reconnecting', () => {
-        process.send({ _reconnecting: true });
-      });
-    } else if (mode === 'worker') {
-      this.parentPort = require('node:worker_threads').parentPort;
-      this.parentPort.on('message', this._handleMessage.bind(this));
-      client.on('ready', () => {
-        this.parentPort.postMessage({ _ready: true });
-      });
-      client.on('disconnect', () => {
-        this.parentPort.postMessage({ _disconnect: true });
-      });
-      client.on('reconnecting', () => {
-        this.parentPort.postMessage({ _reconnecting: true });
-      });
+    switch (mode) {
+      case 'process':
+        process.on('message', this._handleMessage.bind(this));
+        client.on(Events.ShardReady, () => {
+          process.send({ _ready: true });
+        });
+        client.on(Events.ShardDisconnect, () => {
+          process.send({ _disconnect: true });
+        });
+        client.on(Events.ShardReconnecting, () => {
+          process.send({ _reconnecting: true });
+        });
+        client.on(Events.ShardResume, () => {
+          process.send({ _resume: true });
+        });
+        break;
+      case 'worker':
+        this.parentPort = require('node:worker_threads').parentPort;
+        this.parentPort.on('message', this._handleMessage.bind(this));
+        client.on(Events.ShardReady, () => {
+          this.parentPort.postMessage({ _ready: true });
+        });
+        client.on(Events.ShardDisconnect, () => {
+          this.parentPort.postMessage({ _disconnect: true });
+        });
+        client.on(Events.ShardReconnecting, () => {
+          this.parentPort.postMessage({ _reconnecting: true });
+        });
+        client.on(Events.ShardResume, () => {
+          this.parentPort.postMessage({ _resume: true });
+        });
+        break;
     }
   }
 
@@ -81,14 +91,17 @@ class ShardClientUtil {
    */
   send(message) {
     return new Promise((resolve, reject) => {
-      if (this.mode === 'process') {
-        process.send(message, err => {
-          if (err) reject(err);
-          else resolve();
-        });
-      } else if (this.mode === 'worker') {
-        this.parentPort.postMessage(message);
-        resolve();
+      switch (this.mode) {
+        case 'process':
+          process.send(message, err => {
+            if (err) reject(err);
+            else resolve();
+          });
+          break;
+        case 'worker':
+          this.parentPort.postMessage(message);
+          resolve();
+          break;
       }
     });
   }
@@ -111,13 +124,16 @@ class ShardClientUtil {
       const listener = message => {
         if (message?._sFetchProp !== prop || message._sFetchPropShard !== shard) return;
         parent.removeListener('message', listener);
+        this.decrementMaxListeners(parent);
         if (!message._error) resolve(message._result);
-        else reject(Util.makeError(message._error));
+        else reject(makeError(message._error));
       };
+      this.incrementMaxListeners(parent);
       parent.on('message', listener);
 
       this.send({ _sFetchProp: prop, _sFetchPropShard: shard }).catch(err => {
         parent.removeListener('message', listener);
+        this.decrementMaxListeners(parent);
         reject(err);
       });
     });
@@ -138,7 +154,7 @@ class ShardClientUtil {
     return new Promise((resolve, reject) => {
       const parent = this.parentPort ?? process;
       if (typeof script !== 'function') {
-        reject(new TypeError('SHARDING_INVALID_EVAL_BROADCAST'));
+        reject(new DiscordjsTypeError(ErrorCodes.ShardingInvalidEvalBroadcast));
         return;
       }
       script = `(${script})(this, ${JSON.stringify(options.context)})`;
@@ -146,13 +162,15 @@ class ShardClientUtil {
       const listener = message => {
         if (message?._sEval !== script || message._sEvalShard !== options.shard) return;
         parent.removeListener('message', listener);
+        this.decrementMaxListeners(parent);
         if (!message._error) resolve(message._result);
-        else reject(Util.makeError(message._error));
+        else reject(makeError(message._error));
       };
+      this.incrementMaxListeners(parent);
       parent.on('message', listener);
-
       this.send({ _sEval: script, _sEvalShard: options.shard }).catch(err => {
         parent.removeListener('message', listener);
+        this.decrementMaxListeners(parent);
         reject(err);
       });
     });
@@ -182,13 +200,13 @@ class ShardClientUtil {
         for (const prop of props) value = value[prop];
         this._respond('fetchProp', { _fetchProp: message._fetchProp, _result: value });
       } catch (err) {
-        this._respond('fetchProp', { _fetchProp: message._fetchProp, _error: Util.makePlainError(err) });
+        this._respond('fetchProp', { _fetchProp: message._fetchProp, _error: makePlainError(err) });
       }
     } else if (message._eval) {
       try {
         this._respond('eval', { _eval: message._eval, _result: await this.client._eval(message._eval) });
       } catch (err) {
-        this._respond('eval', { _eval: message._eval, _error: Util.makePlainError(err) });
+        this._respond('eval', { _eval: message._eval, _error: makePlainError(err) });
       }
     }
   }
@@ -205,10 +223,13 @@ class ShardClientUtil {
       error.stack = err.stack;
       /**
        * Emitted when the client encounters an error.
+       * <warn>Errors thrown within this event do not have a catch handler, it is
+       * recommended to not use async functions as `error` event handlers. See the
+       * [Node.js docs](https://nodejs.org/api/events.html#capture-rejections-of-promises) for details.</warn>
        * @event Client#error
        * @param {Error} error The error encountered
        */
-      this.client.emit(Events.ERROR, error);
+      this.client.emit(Events.Error, error);
     });
   }
 
@@ -223,7 +244,7 @@ class ShardClientUtil {
       this._singleton = new this(client, mode);
     } else {
       client.emit(
-        Events.WARN,
+        Events.Warn,
         'Multiple clients created in child process/worker; only the first will handle sharding helpers.',
       );
     }
@@ -237,9 +258,33 @@ class ShardClientUtil {
    * @returns {number}
    */
   static shardIdForGuildId(guildId, shardCount) {
-    const shard = Number(BigInt(guildId) >> 22n) % shardCount;
-    if (shard < 0) throw new Error('SHARDING_SHARD_MISCALCULATION', shard, guildId, shardCount);
+    const shard = calculateShardId(guildId, shardCount);
+    if (shard < 0) throw new DiscordjsError(ErrorCodes.ShardingShardMiscalculation, shard, guildId, shardCount);
     return shard;
+  }
+
+  /**
+   * Increments max listeners by one for a given emitter, if they are not zero.
+   * @param {EventEmitter|process} emitter The emitter that emits the events.
+   * @private
+   */
+  incrementMaxListeners(emitter) {
+    const maxListeners = emitter.getMaxListeners();
+    if (maxListeners !== 0) {
+      emitter.setMaxListeners(maxListeners + 1);
+    }
+  }
+
+  /**
+   * Decrements max listeners by one for a given emitter, if they are not zero.
+   * @param {EventEmitter|process} emitter The emitter that emits the events.
+   * @private
+   */
+  decrementMaxListeners(emitter) {
+    const maxListeners = emitter.getMaxListeners();
+    if (maxListeners !== 0) {
+      emitter.setMaxListeners(maxListeners - 1);
+    }
   }
 }
 

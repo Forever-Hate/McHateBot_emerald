@@ -1,5 +1,6 @@
 'use strict';
 
+const { Routes } = require('discord-api-types/v10');
 const CachedManager = require('./CachedManager');
 const MessageReaction = require('../structures/MessageReaction');
 
@@ -32,6 +33,7 @@ class ReactionManager extends CachedManager {
    * Data that can be resolved to a MessageReaction object. This can be:
    * * A MessageReaction
    * * A Snowflake
+   * * The Unicode representation of an emoji
    * @typedef {MessageReaction|Snowflake} MessageReactionResolvable
    */
 
@@ -58,7 +60,7 @@ class ReactionManager extends CachedManager {
    * @returns {Promise<Message>}
    */
   async removeAll() {
-    await this.client.api.channels(this.message.channelId).messages(this.message.id).reactions.delete();
+    await this.client.rest.delete(Routes.channelMessageAllReactions(this.message.channelId, this.message.id));
     return this.message;
   }
 }

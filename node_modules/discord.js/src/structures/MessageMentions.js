@@ -1,13 +1,61 @@
 'use strict';
 
 const { Collection } = require('@discordjs/collection');
-const { ChannelTypes } = require('../util/Constants');
-const Util = require('../util/Util');
+const { FormattingPatterns } = require('discord-api-types/v10');
+const { flatten } = require('../util/Util');
 
 /**
  * Keeps track of mentions in a {@link Message}.
  */
 class MessageMentions {
+  /**
+   * A regular expression that matches `@everyone` and `@here`.
+   * The `mention` group property is present on the `exec` result of this expression.
+   * @type {RegExp}
+   * @memberof MessageMentions
+   */
+  static EveryonePattern = /@(?<mention>everyone|here)/;
+
+  /**
+   * A regular expression that matches user mentions like `<@81440962496172032>`.
+   * The `id` group property is present on the `exec` result of this expression.
+   * @type {RegExp}
+   * @memberof MessageMentions
+   */
+  static UsersPattern = FormattingPatterns.UserWithOptionalNickname;
+
+  /**
+   * A regular expression that matches role mentions like `<@&297577916114403338>`.
+   * The `id` group property is present on the `exec` result of this expression.
+   * @type {RegExp}
+   * @memberof MessageMentions
+   */
+  static RolesPattern = FormattingPatterns.Role;
+
+  /**
+   * A regular expression that matches channel mentions like `<#222079895583457280>`.
+   * The `id` group property is present on the `exec` result of this expression.
+   * @type {RegExp}
+   * @memberof MessageMentions
+   */
+  static ChannelsPattern = FormattingPatterns.Channel;
+
+  /**
+   * A global regular expression variant of {@link MessageMentions.ChannelsPattern}.
+   * @type {RegExp}
+   * @memberof MessageMentions
+   * @private
+   */
+  static GlobalChannelsPattern = new RegExp(this.ChannelsPattern.source, 'g');
+
+  /**
+   * A global regular expression variant of {@link MessageMentions.UsersPattern}.
+   * @type {RegExp}
+   * @memberof MessageMentions
+   * @private
+   */
+  static GlobalUsersPattern = new RegExp(this.UsersPattern.source, 'g');
+
   constructor(message, users, roles, everyone, crosspostedChannels, repliedUser) {
     /**
      * The client the message is from
@@ -88,10 +136,17 @@ class MessageMentions {
 
     /**
      * Cached channels for {@link MessageMentions#channels}
-     * @type {?Collection<Snowflake, Channel>}
+     * @type {?Collection<Snowflake, BaseChannel>}
      * @private
      */
     this._channels = null;
+
+    /**
+     * Cached users for {@link MessageMentions#parsedUsers}
+     * @type {?Collection<Snowflake, User>}
+     * @private
+     */
+    this._parsedUsers = null;
 
     /**
      * Crossposted channel data.
@@ -112,13 +167,11 @@ class MessageMentions {
         this.crosspostedChannels = new Collection(crosspostedChannels);
       } else {
         this.crosspostedChannels = new Collection();
-        const channelTypes = Object.keys(ChannelTypes);
         for (const d of crosspostedChannels) {
-          const type = channelTypes[d.type];
           this.crosspostedChannels.set(d.id, {
             channelId: d.id,
             guildId: d.guild_id,
-            type: type ?? 'UNKNOWN',
+            type: d.type,
             name: d.name,
           });
         }
@@ -154,18 +207,37 @@ class MessageMentions {
   /**
    * Any channels that were mentioned
    * <info>Order as they appear first in the message content</info>
-   * @type {Collection<Snowflake, Channel>}
+   * @type {Collection<Snowflake, BaseChannel>}
    * @readonly
    */
   get channels() {
     if (this._channels) return this._channels;
     this._channels = new Collection();
     let matches;
-    while ((matches = this.constructor.CHANNELS_PATTERN.exec(this._content)) !== null) {
-      const chan = this.client.channels.cache.get(matches[1]);
-      if (chan) this._channels.set(chan.id, chan);
+
+    while ((matches = this.constructor.GlobalChannelsPattern.exec(this._content)) !== null) {
+      const channel = this.client.channels.cache.get(matches.groups.id);
+      if (channel) this._channels.set(channel.id, channel);
     }
+
     return this._channels;
+  }
+
+  /**
+   * Any user mentions that were included in the message content
+   * <info>Order as they appear first in the message content</info>
+   * @type {Collection<Snowflake, User>}
+   * @readonly
+   */
+  get parsedUsers() {
+    if (this._parsedUsers) return this._parsedUsers;
+    this._parsedUsers = new Collection();
+    let matches;
+    while ((matches = this.constructor.GlobalUsersPattern.exec(this._content)) !== null) {
+      const user = this.client.users.cache.get(matches[1]);
+      if (user) this._parsedUsers.set(user.id, user);
+    }
+    return this._parsedUsers;
   }
 
   /**
@@ -173,63 +245,53 @@ class MessageMentions {
    * @typedef {Object} MessageMentionsHasOptions
    * @property {boolean} [ignoreDirect=false] Whether to ignore direct mentions to the item
    * @property {boolean} [ignoreRoles=false] Whether to ignore role mentions to a guild member
-   * @property {boolean} [ignoreEveryone=false] Whether to ignore everyone/here mentions
+   * @property {boolean} [ignoreRepliedUser=false] Whether to ignore replied user mention to an user
+   * @property {boolean} [ignoreEveryone=false] Whether to ignore `@everyone`/`@here` mentions
    */
 
   /**
-   * Checks if a user, guild member, role, or channel is mentioned.
-   * Takes into account user mentions, role mentions, and `@everyone`/`@here` mentions.
+   * Checks if a user, guild member, thread member, role, or channel is mentioned.
+   * Takes into account user mentions, role mentions, channel mentions,
+   * replied user mention, and `@everyone`/`@here` mentions.
    * @param {UserResolvable|RoleResolvable|ChannelResolvable} data The User/Role/Channel to check for
    * @param {MessageMentionsHasOptions} [options] The options for the check
    * @returns {boolean}
    */
-  has(data, { ignoreDirect = false, ignoreRoles = false, ignoreEveryone = false } = {}) {
-    if (!ignoreEveryone && this.everyone) return true;
-    const { GuildMember } = require('./GuildMember');
-    if (!ignoreRoles && data instanceof GuildMember) {
-      for (const role of this.roles.values()) if (data.roles.cache.has(role.id)) return true;
-    }
+  has(data, { ignoreDirect = false, ignoreRoles = false, ignoreRepliedUser = false, ignoreEveryone = false } = {}) {
+    const user = this.client.users.resolve(data);
+
+    if (!ignoreEveryone && user && this.everyone) return true;
+
+    const userWasRepliedTo = user && this.repliedUser?.id === user.id;
+
+    if (!ignoreRepliedUser && userWasRepliedTo && this.users.has(user.id)) return true;
 
     if (!ignoreDirect) {
-      const id =
-        this.guild?.roles.resolveId(data) ?? this.client.channels.resolveId(data) ?? this.client.users.resolveId(data);
+      if (user && (!ignoreRepliedUser || this.parsedUsers.has(user.id)) && this.users.has(user.id)) return true;
 
-      return typeof id === 'string' && (this.users.has(id) || this.channels.has(id) || this.roles.has(id));
+      const role = this.guild?.roles.resolve(data);
+      if (role && this.roles.has(role.id)) return true;
+
+      const channel = this.client.channels.resolve(data);
+      if (channel && this.channels.has(channel.id)) return true;
+    }
+
+    if (!ignoreRoles) {
+      const member = this.guild?.members.resolve(data);
+      if (member) {
+        for (const mentionedRole of this.roles.values()) if (member.roles.cache.has(mentionedRole.id)) return true;
+      }
     }
 
     return false;
   }
 
   toJSON() {
-    return Util.flatten(this, {
+    return flatten(this, {
       members: true,
       channels: true,
     });
   }
 }
-
-/**
- * Regular expression that globally matches `@everyone` and `@here`
- * @type {RegExp}
- */
-MessageMentions.EVERYONE_PATTERN = /@(everyone|here)/g;
-
-/**
- * Regular expression that globally matches user mentions like `<@81440962496172032>`
- * @type {RegExp}
- */
-MessageMentions.USERS_PATTERN = /<@!?(\d{17,19})>/g;
-
-/**
- * Regular expression that globally matches role mentions like `<@&297577916114403338>`
- * @type {RegExp}
- */
-MessageMentions.ROLES_PATTERN = /<@&(\d{17,19})>/g;
-
-/**
- * Regular expression that globally matches channel mentions like `<#222079895583457280>`
- * @type {RegExp}
- */
-MessageMentions.CHANNELS_PATTERN = /<#(\d{17,19})>/g;
 
 module.exports = MessageMentions;

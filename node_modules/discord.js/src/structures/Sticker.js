@@ -1,17 +1,10 @@
 'use strict';
 
-const process = require('node:process');
+const { DiscordSnowflake } = require('@sapphire/snowflake');
+const { Routes } = require('discord-api-types/v10');
 const Base = require('./Base');
-const { StickerFormatTypes, StickerTypes } = require('../util/Constants');
-const SnowflakeUtil = require('../util/SnowflakeUtil');
-
-/**
- * @type {WeakSet<StageInstance>}
- * @private
- * @internal
- */
-const deletedStickers = new WeakSet();
-let deprecationEmittedForDeleted = false;
+const { DiscordjsError, ErrorCodes } = require('../errors');
+const { StickerFormatExtensionMap } = require('../util/Constants');
 
 /**
  * Represents a Sticker.
@@ -46,7 +39,7 @@ class Sticker extends Base {
        * The type of the sticker
        * @type {?StickerType}
        */
-      this.type = StickerTypes[sticker.type];
+      this.type = sticker.type;
     } else {
       this.type ??= null;
     }
@@ -56,7 +49,7 @@ class Sticker extends Base {
        * The format of the sticker
        * @type {StickerFormatType}
        */
-      this.format = StickerFormatTypes[sticker.format_type];
+      this.format = sticker.format_type;
     }
 
     if ('name' in sticker) {
@@ -79,10 +72,10 @@ class Sticker extends Base {
 
     if ('tags' in sticker) {
       /**
-       * An array of tags for the sticker
-       * @type {?string[]}
+       * Autocomplete/suggestions for the sticker
+       * @type {?string}
        */
-      this.tags = sticker.tags.split(', ');
+      this.tags = sticker.tags;
     } else {
       this.tags ??= null;
     }
@@ -134,7 +127,7 @@ class Sticker extends Base {
    * @readonly
    */
   get createdTimestamp() {
-    return SnowflakeUtil.timestampFrom(this.id);
+    return DiscordSnowflake.timestampFrom(this.id);
   }
 
   /**
@@ -144,36 +137,6 @@ class Sticker extends Base {
    */
   get createdAt() {
     return new Date(this.createdTimestamp);
-  }
-
-  /**
-   * Whether or not the sticker has been deleted
-   * @type {boolean}
-   * @deprecated This will be removed in the next major version, see https://github.com/discordjs/discord.js/issues/7091
-   */
-  get deleted() {
-    if (!deprecationEmittedForDeleted) {
-      deprecationEmittedForDeleted = true;
-      process.emitWarning(
-        'Sticker#deleted is deprecated, see https://github.com/discordjs/discord.js/issues/7091.',
-        'DeprecationWarning',
-      );
-    }
-
-    return deletedStickers.has(this);
-  }
-
-  set deleted(value) {
-    if (!deprecationEmittedForDeleted) {
-      deprecationEmittedForDeleted = true;
-      process.emitWarning(
-        'Sticker#deleted is deprecated, see https://github.com/discordjs/discord.js/issues/7091.',
-        'DeprecationWarning',
-      );
-    }
-
-    if (value) deletedStickers.add(this);
-    else deletedStickers.delete(this);
   }
 
   /**
@@ -196,11 +159,13 @@ class Sticker extends Base {
 
   /**
    * A link to the sticker
-   * <info>If the sticker's format is LOTTIE, it returns the URL of the Lottie JSON file.</info>
+   * <info>If the sticker's format is {@link StickerFormatType.Lottie}, it returns
+   * the URL of the Lottie JSON file.</info>
    * @type {string}
+   * @readonly
    */
   get url() {
-    return this.client.rest.cdn.Sticker(this.id, this.format);
+    return this.client.rest.cdn.sticker(this.id, StickerFormatExtensionMap[this.format]);
   }
 
   /**
@@ -208,7 +173,7 @@ class Sticker extends Base {
    * @returns {Promise<Sticker>}
    */
   async fetch() {
-    const data = await this.client.api.stickers(this.id).get();
+    const data = await this.client.rest.get(Routes.sticker(this.id));
     this._patch(data);
     return this;
   }
@@ -227,25 +192,22 @@ class Sticker extends Base {
    */
   async fetchUser() {
     if (this.partial) await this.fetch();
-    if (!this.guildId) throw new Error('NOT_GUILD_STICKER');
-
-    const data = await this.client.api.guilds(this.guildId).stickers(this.id).get();
-    this._patch(data);
-    return this.user;
+    if (!this.guildId) throw new DiscordjsError(ErrorCodes.NotGuildSticker);
+    return this.guild.stickers.fetchUser(this);
   }
 
   /**
    * Data for editing a sticker.
-   * @typedef {Object} GuildStickerEditData
+   * @typedef {Object} GuildStickerEditOptions
    * @property {string} [name] The name of the sticker
    * @property {?string} [description] The description of the sticker
    * @property {string} [tags] The Discord name of a unicode emoji representing the sticker's expression
+   * @property {string} [reason] Reason for editing this sticker
    */
 
   /**
    * Edits the sticker.
-   * @param {GuildStickerEditData} [data] The new data for the sticker
-   * @param {string} [reason] Reason for editing this sticker
+   * @param {GuildStickerEditOptions} options The options to provide
    * @returns {Promise<Sticker>}
    * @example
    * // Update the name of a sticker
@@ -253,8 +215,8 @@ class Sticker extends Base {
    *   .then(s => console.log(`Updated the name of the sticker to ${s.name}`))
    *   .catch(console.error);
    */
-  edit(data, reason) {
-    return this.guild.stickers.edit(this, data, reason);
+  edit(options) {
+    return this.guild.stickers.edit(this, options);
   }
 
   /**
@@ -286,8 +248,7 @@ class Sticker extends Base {
         other.format === this.format &&
         other.name === this.name &&
         other.packId === this.packId &&
-        other.tags.length === this.tags.length &&
-        other.tags.every(tag => this.tags.includes(tag)) &&
+        other.tags === this.tags &&
         other.available === this.available &&
         other.guildId === this.guildId &&
         other.sortValue === this.sortValue
@@ -297,14 +258,13 @@ class Sticker extends Base {
         other.id === this.id &&
         other.description === this.description &&
         other.name === this.name &&
-        other.tags === this.tags.join(', ')
+        other.tags === this.tags
       );
     }
   }
 }
 
 exports.Sticker = Sticker;
-exports.deletedStickers = deletedStickers;
 
 /**
  * @external APISticker

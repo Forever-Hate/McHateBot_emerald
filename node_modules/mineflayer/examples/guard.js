@@ -42,8 +42,7 @@ function stopGuarding () {
 
 // Pathfinder to the guard position
 function moveToGuardPos () {
-  const mcData = require('minecraft-data')(bot.version)
-  bot.pathfinder.setMovements(new Movements(bot, mcData))
+  bot.pathfinder.setMovements(new Movements(bot))
   bot.pathfinder.setGoal(new goals.GoalBlock(guardPos.x, guardPos.y, guardPos.z))
 }
 
@@ -60,7 +59,7 @@ bot.on('physicsTick', () => {
 
   // Only look for mobs within 16 blocks
   const filter = e => e.type === 'mob' && e.position.distanceTo(bot.entity.position) < 16 &&
-                    e.mobType !== 'Armor Stand' // Mojang classifies armor stands as mobs for some reason?
+                    e.displayName !== 'Armor Stand' // Mojang classifies armor stands as mobs for some reason?
 
   const entity = bot.nearestEntity(filter)
   if (entity) {

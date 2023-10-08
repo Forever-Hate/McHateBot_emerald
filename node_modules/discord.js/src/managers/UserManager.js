@@ -1,6 +1,8 @@
 'use strict';
 
+const { ChannelType, Routes } = require('discord-api-types/v10');
 const CachedManager = require('./CachedManager');
+const { DiscordjsError, ErrorCodes } = require('../errors');
 const { GuildMember } = require('../structures/GuildMember');
 const { Message } = require('../structures/Message');
 const ThreadMember = require('../structures/ThreadMember');
@@ -38,7 +40,7 @@ class UserManager extends CachedManager {
    * @private
    */
   dmChannel(userId) {
-    return this.client.channels.cache.find(c => c.type === 'DM' && c.recipient.id === userId) ?? null;
+    return this.client.channels.cache.find(c => c.type === ChannelType.DM && c.recipientId === userId) ?? null;
   }
 
   /**
@@ -55,11 +57,7 @@ class UserManager extends CachedManager {
       if (dmChannel && !dmChannel.partial) return dmChannel;
     }
 
-    const data = await this.client.api.users(this.client.user.id).channels.post({
-      data: {
-        recipient_id: id,
-      },
-    });
+    const data = await this.client.rest.post(Routes.userChannels(), { body: { recipient_id: id } });
     return this.client.channels._add(data, null, { cache });
   }
 
@@ -71,8 +69,8 @@ class UserManager extends CachedManager {
   async deleteDM(user) {
     const id = this.resolveId(user);
     const dmChannel = this.dmChannel(id);
-    if (!dmChannel) throw new Error('USER_NO_DM_CHANNEL');
-    await this.client.api.channels(dmChannel.id).delete();
+    if (!dmChannel) throw new DiscordjsError(ErrorCodes.UserNoDMChannel);
+    await this.client.rest.delete(Routes.channel(dmChannel.id));
     this.client.channels._remove(dmChannel.id);
     return dmChannel;
   }
@@ -90,7 +88,7 @@ class UserManager extends CachedManager {
       if (existing && !existing.partial) return existing;
     }
 
-    const data = await this.client.api.users(id).get();
+    const data = await this.client.rest.get(Routes.user(id));
     return this._add(data, cache);
   }
 
@@ -98,7 +96,7 @@ class UserManager extends CachedManager {
    * Fetches a user's flags.
    * @param {UserResolvable} user The UserResolvable to identify
    * @param {BaseFetchOptions} [options] Additional options for this fetch
-   * @returns {Promise<UserFlags>}
+   * @returns {Promise<UserFlagsBitField>}
    */
   async fetchFlags(user, options) {
     return (await this.fetch(user, options)).flags;
@@ -107,7 +105,7 @@ class UserManager extends CachedManager {
   /**
    * Sends a message to a user.
    * @param {UserResolvable} user The UserResolvable to identify
-   * @param {string|MessagePayload|MessageOptions} options The options to provide
+   * @param {string|MessagePayload|MessageCreateOptions} options The options to provide
    * @returns {Promise<Message>}
    */
   async send(user, options) {

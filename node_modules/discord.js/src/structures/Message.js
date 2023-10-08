@@ -1,32 +1,31 @@
 'use strict';
 
-const process = require('node:process');
+const { messageLink } = require('@discordjs/builders');
 const { Collection } = require('@discordjs/collection');
+const { DiscordSnowflake } = require('@sapphire/snowflake');
+const {
+  InteractionType,
+  ChannelType,
+  MessageType,
+  MessageFlags,
+  PermissionFlagsBits,
+} = require('discord-api-types/v10');
+const Attachment = require('./Attachment');
 const Base = require('./Base');
-const BaseMessageComponent = require('./BaseMessageComponent');
 const ClientApplication = require('./ClientApplication');
+const Embed = require('./Embed');
 const InteractionCollector = require('./InteractionCollector');
-const MessageAttachment = require('./MessageAttachment');
-const Embed = require('./MessageEmbed');
 const Mentions = require('./MessageMentions');
 const MessagePayload = require('./MessagePayload');
 const ReactionCollector = require('./ReactionCollector');
 const { Sticker } = require('./Sticker');
-const { Error } = require('../errors');
+const { DiscordjsError, ErrorCodes } = require('../errors');
 const ReactionManager = require('../managers/ReactionManager');
-const { InteractionTypes, MessageTypes, SystemMessageTypes } = require('../util/Constants');
-const MessageFlags = require('../util/MessageFlags');
-const Permissions = require('../util/Permissions');
-const SnowflakeUtil = require('../util/SnowflakeUtil');
-const Util = require('../util/Util');
-
-/**
- * @type {WeakSet<Message>}
- * @private
- * @internal
- */
-const deletedMessages = new WeakSet();
-let deprecationEmittedForDeleted = false;
+const { createComponent } = require('../util/Components');
+const { NonSystemMessageTypes, MaxBulkDeletableMessageAge, DeletableMessageTypes } = require('../util/Constants');
+const MessageFlagsBitField = require('../util/MessageFlagsBitField');
+const PermissionsBitField = require('../util/PermissionsBitField');
+const { cleanContent, resolvePartialEmoji } = require('../util/Util');
 
 /**
  * Represents a message on Discord.
@@ -62,20 +61,20 @@ class Message extends Base {
      * The timestamp the message was sent at
      * @type {number}
      */
-    this.createdTimestamp = SnowflakeUtil.timestampFrom(this.id);
+    this.createdTimestamp = DiscordSnowflake.timestampFrom(this.id);
 
     if ('type' in data) {
       /**
        * The type of the message
        * @type {?MessageType}
        */
-      this.type = MessageTypes[data.type];
+      this.type = data.type;
 
       /**
        * Whether or not this message was sent by Discord, not actually a user (e.g. pin notifications)
        * @type {?boolean}
        */
-      this.system = SystemMessageTypes.includes(this.type);
+      this.system = !NonSystemMessageTypes.includes(this.type);
     } else {
       this.system ??= null;
       this.type ??= null;
@@ -83,7 +82,9 @@ class Message extends Base {
 
     if ('content' in data) {
       /**
-       * The content of the message
+       * The content of the message.
+       * <info>This property requires the {@link GatewayIntentBits.MessageContent} privileged intent
+       * in a guild for messages that do not mention the client.</info>
        * @type {?string}
        */
       this.content = data.content;
@@ -135,33 +136,39 @@ class Message extends Base {
 
     if ('embeds' in data) {
       /**
-       * A list of embeds in the message - e.g. YouTube Player
-       * @type {MessageEmbed[]}
+       * An array of embeds in the message - e.g. YouTube Player.
+       * <info>This property requires the {@link GatewayIntentBits.MessageContent} privileged intent
+       * in a guild for messages that do not mention the client.</info>
+       * @type {Embed[]}
        */
-      this.embeds = data.embeds.map(e => new Embed(e, true));
+      this.embeds = data.embeds.map(e => new Embed(e));
     } else {
       this.embeds = this.embeds?.slice() ?? [];
     }
 
     if ('components' in data) {
       /**
-       * A list of MessageActionRows in the message
-       * @type {MessageActionRow[]}
+       * An array of of action rows in the message.
+       * <info>This property requires the {@link GatewayIntentBits.MessageContent} privileged intent
+       * in a guild for messages that do not mention the client.</info>
+       * @type {ActionRow[]}
        */
-      this.components = data.components.map(c => BaseMessageComponent.create(c, this.client));
+      this.components = data.components.map(c => createComponent(c));
     } else {
       this.components = this.components?.slice() ?? [];
     }
 
     if ('attachments' in data) {
       /**
-       * A collection of attachments in the message - e.g. Pictures - mapped by their ids
-       * @type {Collection<Snowflake, MessageAttachment>}
+       * A collection of attachments in the message - e.g. Pictures - mapped by their ids.
+       * <info>This property requires the {@link GatewayIntentBits.MessageContent} privileged intent
+       * in a guild for messages that do not mention the client.</info>
+       * @type {Collection<Snowflake, Attachment>}
        */
       this.attachments = new Collection();
       if (data.attachments) {
         for (const attachment of data.attachments) {
-          this.attachments.set(attachment.id, new MessageAttachment(attachment.url, attachment.filename, attachment));
+          this.attachments.set(attachment.id, new Attachment(attachment));
         }
       }
     } else {
@@ -180,13 +187,49 @@ class Message extends Base {
       this.stickers = new Collection(this.stickers);
     }
 
+    if ('position' in data) {
+      /**
+       * A generally increasing integer (there may be gaps or duplicates) that represents
+       * the approximate position of the message in a thread.
+       * @type {?number}
+       */
+      this.position = data.position;
+    } else {
+      this.position ??= null;
+    }
+
+    if ('role_subscription_data' in data) {
+      /**
+       * Role subscription data found on {@link MessageType.RoleSubscriptionPurchase} messages.
+       * @typedef {Object} RoleSubscriptionData
+       * @property {Snowflake} roleSubscriptionListingId The id of the SKU and listing the user is subscribed to
+       * @property {string} tierName The name of the tier the user is subscribed to
+       * @property {number} totalMonthsSubscribed The total number of months the user has been subscribed for
+       * @property {boolean} isRenewal Whether this notification is a renewal
+       */
+
+      /**
+       * The data of the role subscription purchase or renewal.
+       * <info>This is present on {@link MessageType.RoleSubscriptionPurchase} messages.</info>
+       * @type {?RoleSubscriptionData}
+       */
+      this.roleSubscriptionData = {
+        roleSubscriptionListingId: data.role_subscription_data.role_subscription_listing_id,
+        tierName: data.role_subscription_data.tier_name,
+        totalMonthsSubscribed: data.role_subscription_data.total_months_subscribed,
+        isRenewal: data.role_subscription_data.is_renewal,
+      };
+    } else {
+      this.roleSubscriptionData ??= null;
+    }
+
     // Discord sends null if the message has not been edited
     if (data.edited_timestamp) {
       /**
        * The timestamp the message was last edited at (if applicable)
        * @type {?number}
        */
-      this.editedTimestamp = new Date(data.edited_timestamp).getTime();
+      this.editedTimestamp = Date.parse(data.edited_timestamp);
     } else {
       this.editedTimestamp ??= null;
     }
@@ -286,21 +329,21 @@ class Message extends Base {
     if ('flags' in data) {
       /**
        * Flags that are applied to the message
-       * @type {Readonly<MessageFlags>}
+       * @type {Readonly<MessageFlagsBitField>}
        */
-      this.flags = new MessageFlags(data.flags).freeze();
+      this.flags = new MessageFlagsBitField(data.flags).freeze();
     } else {
-      this.flags = new MessageFlags(this.flags).freeze();
+      this.flags = new MessageFlagsBitField(this.flags).freeze();
     }
 
     /**
      * Reference data sent in a message that contains ids identifying the referenced message.
      * This can be present in the following types of message:
-     * * Crossposted messages (IS_CROSSPOST {@link MessageFlags.FLAGS message flag})
-     * * CHANNEL_FOLLOW_ADD
-     * * CHANNEL_PINNED_MESSAGE
-     * * REPLY
-     * * THREAD_STARTER_MESSAGE
+     * * Crossposted messages (`MessageFlags.Crossposted`)
+     * * {@link MessageType.ChannelFollowAdd}
+     * * {@link MessageType.ChannelPinnedMessage}
+     * * {@link MessageType.Reply}
+     * * {@link MessageType.ThreadStarterMessage}
      * @see {@link https://discord.com/developers/docs/resources/channel#message-types}
      * @typedef {Object} MessageReference
      * @property {Snowflake} channelId The channel's id the message was referenced
@@ -331,7 +374,8 @@ class Message extends Base {
      * @typedef {Object} MessageInteraction
      * @property {Snowflake} id The interaction's id
      * @property {InteractionType} type The type of the interaction
-     * @property {string} commandName The name of the interaction's application command
+     * @property {string} commandName The name of the interaction's application command,
+     * as well as the subcommand and subcommand group, where applicable
      * @property {User} user The user that invoked the interaction
      */
 
@@ -342,7 +386,7 @@ class Message extends Base {
        */
       this.interaction = {
         id: data.interaction.id,
-        type: InteractionTypes[data.interaction.type],
+        type: data.interaction.type,
         commandName: data.interaction.name,
         user: this.client.users._add(data.interaction.user),
       };
@@ -352,38 +396,8 @@ class Message extends Base {
   }
 
   /**
-   * Whether or not the structure has been deleted
-   * @type {boolean}
-   * @deprecated This will be removed in the next major version, see https://github.com/discordjs/discord.js/issues/7091
-   */
-  get deleted() {
-    if (!deprecationEmittedForDeleted) {
-      deprecationEmittedForDeleted = true;
-      process.emitWarning(
-        'Message#deleted is deprecated, see https://github.com/discordjs/discord.js/issues/7091.',
-        'DeprecationWarning',
-      );
-    }
-
-    return deletedMessages.has(this);
-  }
-
-  set deleted(value) {
-    if (!deprecationEmittedForDeleted) {
-      deprecationEmittedForDeleted = true;
-      process.emitWarning(
-        'Message#deleted is deprecated, see https://github.com/discordjs/discord.js/issues/7091.',
-        'DeprecationWarning',
-      );
-    }
-
-    if (value) deletedMessages.add(this);
-    else deletedMessages.delete(this);
-  }
-
-  /**
    * The channel that the message was sent in
-   * @type {TextChannel|DMChannel|NewsChannel|ThreadChannel}
+   * @type {TextBasedChannels}
    * @readonly
    */
   get channel() {
@@ -424,7 +438,7 @@ class Message extends Base {
    * @readonly
    */
   get editedAt() {
-    return this.editedTimestamp ? new Date(this.editedTimestamp) : null;
+    return this.editedTimestamp && new Date(this.editedTimestamp);
   }
 
   /**
@@ -442,7 +456,7 @@ class Message extends Base {
    * @readonly
    */
   get hasThread() {
-    return this.flags.has(MessageFlags.FLAGS.HAS_THREAD);
+    return this.flags.has(MessageFlags.HasThread);
   }
 
   /**
@@ -462,7 +476,7 @@ class Message extends Base {
    * @readonly
    */
   get url() {
-    return `https://discord.com/channels/${this.guildId ?? '@me'}/${this.channelId}/${this.id}`;
+    return this.inGuild() ? messageLink(this.channelId, this.id, this.guildId) : messageLink(this.channelId, this.id);
   }
 
   /**
@@ -473,7 +487,7 @@ class Message extends Base {
    */
   get cleanContent() {
     // eslint-disable-next-line eqeqeq
-    return this.content != null ? Util.cleanContent(this.content, this.channel) : null;
+    return this.content != null ? cleanContent(this.content, this.channel) : null;
   }
 
   /**
@@ -521,7 +535,7 @@ class Message extends Base {
 
   /**
    * @typedef {CollectorOptions} MessageComponentCollectorOptions
-   * @property {MessageComponentType} [componentType] The type of component to listen for
+   * @property {ComponentType} [componentType] The type of component to listen for
    * @property {number} [max] The maximum total amount of interactions to collect
    * @property {number} [maxComponents] The maximum number of components to collect
    * @property {number} [maxUsers] The maximum number of users to interact
@@ -541,7 +555,7 @@ class Message extends Base {
   createMessageComponentCollector(options = {}) {
     return new InteractionCollector(this.client, {
       ...options,
-      interactionType: InteractionTypes.MESSAGE_COMPONENT,
+      interactionType: InteractionType.MessageComponent,
       message: this,
     });
   }
@@ -551,7 +565,10 @@ class Message extends Base {
    * @typedef {Object} AwaitMessageComponentOptions
    * @property {CollectorFilter} [filter] The filter applied to this collector
    * @property {number} [time] Time to wait for an interaction before rejecting
-   * @property {MessageComponentType} [componentType] The type of component interaction to collect
+   * @property {ComponentType} [componentType] The type of component interaction to collect
+   * @property {number} [idle] Time to wait without another message component interaction before ending the collector
+   * @property {boolean} [dispose] Whether to remove the message component interaction after collecting
+   * @property {InteractionResponse} [interactionResponse] The interaction response to collect interactions from
    */
 
   /**
@@ -573,7 +590,7 @@ class Message extends Base {
       collector.once('end', (interactions, reason) => {
         const interaction = interactions.first();
         if (interaction) resolve(interaction);
-        else reject(new Error('INTERACTION_COLLECTOR_ERROR', reason));
+        else reject(new DiscordjsError(ErrorCodes.InteractionCollectorError, reason));
       });
     });
   }
@@ -584,14 +601,18 @@ class Message extends Base {
    * @readonly
    */
   get editable() {
-    const precheck = Boolean(
-      this.author.id === this.client.user.id && !deletedMessages.has(this) && (!this.guild || this.channel?.viewable),
-    );
+    const precheck = Boolean(this.author.id === this.client.user.id && (!this.guild || this.channel?.viewable));
+
     // Regardless of permissions thread messages cannot be edited if
-    // the thread is locked.
+    // the thread is archived or the thread is locked and the bot does not have permission to manage threads.
     if (this.channel?.isThread()) {
-      return precheck && !this.channel.locked;
+      if (this.channel.archived) return false;
+      if (this.channel.locked) {
+        const permissions = this.channel.permissionsFor(this.client.user);
+        if (!permissions?.has(PermissionFlagsBits.ManageThreads, true)) return false;
+      }
     }
+
     return precheck;
   }
 
@@ -601,9 +622,8 @@ class Message extends Base {
    * @readonly
    */
   get deletable() {
-    if (deletedMessages.has(this)) {
-      return false;
-    }
+    if (!DeletableMessageTypes.includes(this.type)) return false;
+
     if (!this.guild) {
       return this.author.id === this.client.user.id;
     }
@@ -615,12 +635,30 @@ class Message extends Base {
     const permissions = this.channel?.permissionsFor(this.client.user);
     if (!permissions) return false;
     // This flag allows deleting even if timed out
-    if (permissions.has(Permissions.FLAGS.ADMINISTRATOR, false)) return true;
+    if (permissions.has(PermissionFlagsBits.Administrator, false)) return true;
 
-    return Boolean(
-      this.author.id === this.client.user.id ||
-        (permissions.has(Permissions.FLAGS.MANAGE_MESSAGES, false) &&
-          this.guild.me.communicationDisabledUntilTimestamp < Date.now()),
+    // The auto moderation action message author is the reference message author
+    return (
+      (this.type !== MessageType.AutoModerationAction && this.author.id === this.client.user.id) ||
+      (permissions.has(PermissionFlagsBits.ManageMessages, false) && !this.guild.members.me.isCommunicationDisabled())
+    );
+  }
+
+  /**
+   * Whether the message is bulk deletable by the client user
+   * @type {boolean}
+   * @readonly
+   * @example
+   * // Filter for bulk deletable messages
+   * channel.bulkDelete(messages.filter(message => message.bulkDeletable));
+   */
+  get bulkDeletable() {
+    return (
+      (this.inGuild() &&
+        Date.now() - this.createdTimestamp < MaxBulkDeletableMessageAge &&
+        this.deletable &&
+        this.channel?.permissionsFor(this.client.user).has(PermissionFlagsBits.ManageMessages, false)) ??
+      false
     );
   }
 
@@ -633,10 +671,9 @@ class Message extends Base {
     const { channel } = this;
     return Boolean(
       !this.system &&
-        !deletedMessages.has(this) &&
         (!this.guild ||
           (channel?.viewable &&
-            channel?.permissionsFor(this.client.user)?.has(Permissions.FLAGS.MANAGE_MESSAGES, false))),
+            channel?.permissionsFor(this.client.user)?.has(PermissionFlagsBits.ManageMessages, false))),
     );
   }
 
@@ -645,10 +682,10 @@ class Message extends Base {
    * @returns {Promise<Message>}
    */
   async fetchReference() {
-    if (!this.reference) throw new Error('MESSAGE_REFERENCE_MISSING');
+    if (!this.reference) throw new DiscordjsError(ErrorCodes.MessageReferenceMissing);
     const { channelId, messageId } = this.reference;
     const channel = this.client.channels.resolve(channelId);
-    if (!channel) throw new Error('GUILD_CHANNEL_RESOLVE');
+    if (!channel) throw new DiscordjsError(ErrorCodes.GuildChannelResolve);
     const message = await channel.messages.fetch(messageId);
     return message;
   }
@@ -660,32 +697,17 @@ class Message extends Base {
    */
   get crosspostable() {
     const bitfield =
-      Permissions.FLAGS.SEND_MESSAGES |
-      (this.author.id === this.client.user.id ? Permissions.defaultBit : Permissions.FLAGS.MANAGE_MESSAGES);
+      PermissionFlagsBits.SendMessages |
+      (this.author.id === this.client.user.id ? PermissionsBitField.DefaultBit : PermissionFlagsBits.ManageMessages);
     const { channel } = this;
     return Boolean(
-      channel?.type === 'GUILD_NEWS' &&
-        !this.flags.has(MessageFlags.FLAGS.CROSSPOSTED) &&
-        this.type === 'DEFAULT' &&
+      channel?.type === ChannelType.GuildAnnouncement &&
+        !this.flags.has(MessageFlags.Crossposted) &&
+        this.type === MessageType.Default &&
         channel.viewable &&
-        channel.permissionsFor(this.client.user)?.has(bitfield, false) &&
-        !deletedMessages.has(this),
+        channel.permissionsFor(this.client.user)?.has(bitfield, false),
     );
   }
-
-  /**
-   * Options that can be passed into {@link Message#edit}.
-   * @typedef {Object} MessageEditOptions
-   * @property {?string} [content] Content to be edited
-   * @property {MessageEmbed[]|APIEmbed[]} [embeds] Embeds to be added/edited
-   * @property {MessageMentionOptions} [allowedMentions] Which mentions should be parsed from the message content
-   * @property {MessageFlags} [flags] Which flags to set for the message. Only `SUPPRESS_EMBEDS` can be edited.
-   * @property {MessageAttachment[]} [attachments] An array of attachments to keep,
-   * all attachments will be kept if omitted
-   * @property {FileOptions[]|BufferResolvable[]|MessageAttachment[]} [files] Files to add to the message
-   * @property {MessageActionRow[]|MessageActionRowOptions[]} [components]
-   * Action rows containing interactive components for the message (buttons, select menus)
-   */
 
   /**
    * Edits the content of the message.
@@ -698,7 +720,7 @@ class Message extends Base {
    *   .catch(console.error);
    */
   edit(options) {
-    if (!this.channel) return Promise.reject(new Error('CHANNEL_NOT_CACHED'));
+    if (!this.channel) return Promise.reject(new DiscordjsError(ErrorCodes.ChannelNotCached));
     return this.channel.messages.edit(this, options);
   }
 
@@ -707,19 +729,20 @@ class Message extends Base {
    * @returns {Promise<Message>}
    * @example
    * // Crosspost a message
-   * if (message.channel.type === 'GUILD_NEWS') {
+   * if (message.channel.type === ChannelType.GuildAnnouncement) {
    *   message.crosspost()
    *     .then(() => console.log('Crossposted message'))
    *     .catch(console.error);
    * }
    */
   crosspost() {
-    if (!this.channel) return Promise.reject(new Error('CHANNEL_NOT_CACHED'));
+    if (!this.channel) return Promise.reject(new DiscordjsError(ErrorCodes.ChannelNotCached));
     return this.channel.messages.crosspost(this.id);
   }
 
   /**
    * Pins this message to the channel's pinned messages.
+   * @param {string} [reason] Reason for pinning
    * @returns {Promise<Message>}
    * @example
    * // Pin a message
@@ -727,14 +750,15 @@ class Message extends Base {
    *   .then(console.log)
    *   .catch(console.error)
    */
-  async pin() {
-    if (!this.channel) throw new Error('CHANNEL_NOT_CACHED');
-    await this.channel.messages.pin(this.id);
+  async pin(reason) {
+    if (!this.channel) throw new DiscordjsError(ErrorCodes.ChannelNotCached);
+    await this.channel.messages.pin(this.id, reason);
     return this;
   }
 
   /**
    * Unpins this message from the channel's pinned messages.
+   * @param {string} [reason] Reason for unpinning
    * @returns {Promise<Message>}
    * @example
    * // Unpin a message
@@ -742,9 +766,9 @@ class Message extends Base {
    *   .then(console.log)
    *   .catch(console.error)
    */
-  async unpin() {
-    if (!this.channel) throw new Error('CHANNEL_NOT_CACHED');
-    await this.channel.messages.unpin(this.id);
+  async unpin(reason) {
+    if (!this.channel) throw new DiscordjsError(ErrorCodes.ChannelNotCached);
+    await this.channel.messages.unpin(this.id, reason);
     return this;
   }
 
@@ -764,15 +788,15 @@ class Message extends Base {
    *   .catch(console.error);
    */
   async react(emoji) {
-    if (!this.channel) throw new Error('CHANNEL_NOT_CACHED');
+    if (!this.channel) throw new DiscordjsError(ErrorCodes.ChannelNotCached);
     await this.channel.messages.react(this.id, emoji);
 
     return this.client.actions.MessageReactionAdd.handle(
       {
-        user: this.client.user,
-        channel: this.channel,
-        message: this,
-        emoji: Util.resolvePartialEmoji(emoji),
+        [this.client.actions.injectedUser]: this.client.user,
+        [this.client.actions.injectedChannel]: this.channel,
+        [this.client.actions.injectedMessage]: this,
+        emoji: resolvePartialEmoji(emoji),
       },
       true,
     ).reaction;
@@ -788,22 +812,21 @@ class Message extends Base {
    *   .catch(console.error);
    */
   async delete() {
-    if (!this.channel) throw new Error('CHANNEL_NOT_CACHED');
+    if (!this.channel) throw new DiscordjsError(ErrorCodes.ChannelNotCached);
     await this.channel.messages.delete(this.id);
     return this;
   }
 
   /**
    * Options provided when sending a message as an inline reply.
-   * @typedef {BaseMessageOptions} ReplyMessageOptions
-   * @property {boolean} [failIfNotExists=true] Whether to error if the referenced message
-   * does not exist (creates a standard message in this case when false)
-   * @property {StickerResolvable[]} [stickers=[]] Stickers to send in the message
+   * @typedef {BaseMessageCreateOptions} MessageReplyOptions
+   * @property {boolean} [failIfNotExists=this.client.options.failIfNotExists] Whether to error if the referenced
+   * message does not exist (creates a standard message in this case when false)
    */
 
   /**
    * Send an inline reply to this message.
-   * @param {string|MessagePayload|ReplyMessageOptions} options The options to provide
+   * @param {string|MessagePayload|MessageReplyOptions} options The options to provide
    * @returns {Promise<Message>}
    * @example
    * // Reply to a message
@@ -812,7 +835,7 @@ class Message extends Base {
    *   .catch(console.error);
    */
   reply(options) {
-    if (!this.channel) return Promise.reject(new Error('CHANNEL_NOT_CACHED'));
+    if (!this.channel) return Promise.reject(new DiscordjsError(ErrorCodes.ChannelNotCached));
     let data;
 
     if (options instanceof MessagePayload) {
@@ -829,38 +852,27 @@ class Message extends Base {
   }
 
   /**
-   * A number that is allowed to be the duration (in minutes) of inactivity after which a thread is automatically
-   * archived. This can be:
-   * * `60` (1 hour)
-   * * `1440` (1 day)
-   * * `4320` (3 days) <warn>This is only available when the guild has the `THREE_DAY_THREAD_ARCHIVE` feature.</warn>
-   * * `10080` (7 days) <warn>This is only available when the guild has the `SEVEN_DAY_THREAD_ARCHIVE` feature.</warn>
-   * * `'MAX'` Based on the guild's features
-   * @typedef {number|string} ThreadAutoArchiveDuration
-   */
-
-  /**
    * Options for starting a thread on a message.
    * @typedef {Object} StartThreadOptions
    * @property {string} name The name of the new thread
    * @property {ThreadAutoArchiveDuration} [autoArchiveDuration=this.channel.defaultAutoArchiveDuration] The amount of
-   * time (in minutes) after which the thread should automatically archive in case of no recent activity
+   * time after which the thread should automatically archive in case of no recent activity
    * @property {string} [reason] Reason for creating the thread
    * @property {number} [rateLimitPerUser] The rate limit per user (slowmode) for the thread in seconds
    */
 
   /**
    * Create a new public thread from this message
-   * @see ThreadManager#create
+   * @see GuildTextThreadManager#create
    * @param {StartThreadOptions} [options] Options for starting a thread on this message
    * @returns {Promise<ThreadChannel>}
    */
   startThread(options = {}) {
-    if (!this.channel) return Promise.reject(new Error('CHANNEL_NOT_CACHED'));
-    if (!['GUILD_TEXT', 'GUILD_NEWS'].includes(this.channel.type)) {
-      return Promise.reject(new Error('MESSAGE_THREAD_PARENT'));
+    if (!this.channel) return Promise.reject(new DiscordjsError(ErrorCodes.ChannelNotCached));
+    if (![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(this.channel.type)) {
+      return Promise.reject(new DiscordjsError(ErrorCodes.MessageThreadParent));
     }
-    if (this.hasThread) return Promise.reject(new Error('MESSAGE_EXISTING_THREAD'));
+    if (this.hasThread) return Promise.reject(new DiscordjsError(ErrorCodes.MessageExistingThread));
     return this.channel.threads.create({ ...options, startMessage: this });
   }
 
@@ -870,8 +882,8 @@ class Message extends Base {
    * @returns {Promise<Message>}
    */
   fetch(force = true) {
-    if (!this.channel) return Promise.reject(new Error('CHANNEL_NOT_CACHED'));
-    return this.channel.messages.fetch(this.id, { force });
+    if (!this.channel) return Promise.reject(new DiscordjsError(ErrorCodes.ChannelNotCached));
+    return this.channel.messages.fetch({ message: this.id, force });
   }
 
   /**
@@ -879,8 +891,8 @@ class Message extends Base {
    * @returns {Promise<?Webhook>}
    */
   fetchWebhook() {
-    if (!this.webhookId) return Promise.reject(new Error('WEBHOOK_MESSAGE'));
-    if (this.webhookId === this.applicationId) return Promise.reject(new Error('WEBHOOK_APPLICATION'));
+    if (!this.webhookId) return Promise.reject(new DiscordjsError(ErrorCodes.WebhookMessage));
+    if (this.webhookId === this.applicationId) return Promise.reject(new DiscordjsError(ErrorCodes.WebhookApplication));
     return this.client.fetchWebhook(this.webhookId);
   }
 
@@ -890,12 +902,12 @@ class Message extends Base {
    * @returns {Promise<Message>}
    */
   suppressEmbeds(suppress = true) {
-    const flags = new MessageFlags(this.flags.bitfield);
+    const flags = new MessageFlagsBitField(this.flags.bitfield);
 
     if (suppress) {
-      flags.add(MessageFlags.FLAGS.SUPPRESS_EMBEDS);
+      flags.add(MessageFlags.SuppressEmbeds);
     } else {
-      flags.remove(MessageFlags.FLAGS.SUPPRESS_EMBEDS);
+      flags.remove(MessageFlags.SuppressEmbeds);
     }
 
     return this.edit({ flags });
@@ -943,8 +955,8 @@ class Message extends Base {
     if (equal && rawData) {
       equal =
         this.mentions.everyone === message.mentions.everyone &&
-        this.createdTimestamp === new Date(rawData.timestamp).getTime() &&
-        this.editedTimestamp === new Date(rawData.edited_timestamp).getTime();
+        this.createdTimestamp === Date.parse(rawData.timestamp) &&
+        this.editedTimestamp === Date.parse(rawData.edited_timestamp);
     }
 
     return equal;
@@ -983,4 +995,3 @@ class Message extends Base {
 }
 
 exports.Message = Message;
-exports.deletedMessages = deletedMessages;

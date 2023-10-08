@@ -63,7 +63,7 @@ bot.on('chat', (username, message) => {
       }
       break
     case 'mount':
-      entity = bot.nearestEntity((entity) => { return entity.type === 'object' })
+      entity = bot.nearestEntity((entity) => { return entity.name === 'minecart' })
       if (entity) {
         bot.mount(entity)
       } else {
@@ -108,9 +108,9 @@ bot.once('spawn', () => {
 })
 
 bot.on('mount', () => {
-  bot.chat(`mounted ${bot.vehicle.objectType}`)
+  bot.chat(`mounted ${bot.vehicle.displayName}`)
 })
 
 bot.on('dismount', (vehicle) => {
-  bot.chat(`dismounted ${vehicle.objectType}`)
+  bot.chat(`dismounted ${vehicle.displayName}`)
 })

@@ -1,13 +1,18 @@
 'use strict';
 
+const process = require('node:process');
 const { Collection } = require('@discordjs/collection');
+const { makeURLSearchParams } = require('@discordjs/rest');
+const { Routes } = require('discord-api-types/v10');
 const CachedManager = require('./CachedManager');
-const { TypeError, Error } = require('../errors');
+const { DiscordjsTypeError, DiscordjsError, ErrorCodes } = require('../errors');
 const GuildBan = require('../structures/GuildBan');
 const { GuildMember } = require('../structures/GuildMember');
 
+let deprecationEmittedForDeleteMessageDays = false;
+
 /**
- * Manages API methods for GuildBans and stores their cache.
+ * Manages API methods for guild bans and stores their cache.
  * @extends {CachedManager}
  */
 class GuildBanManager extends CachedManager {
@@ -54,9 +59,12 @@ class GuildBanManager extends CachedManager {
    */
 
   /**
-   * Options used to fetch all bans from a guild.
+   * Options used to fetch multiple bans from a guild.
    * @typedef {Object} FetchBansOptions
-   * @property {boolean} cache Whether or not to cache the fetched bans
+   * @property {number} [limit] The maximum number of bans to return
+   * @property {Snowflake} [before] Consider only bans before this id
+   * @property {Snowflake} [after] Consider only bans after this id
+   * @property {boolean} [cache] Whether to cache the fetched bans
    */
 
   /**
@@ -64,13 +72,13 @@ class GuildBanManager extends CachedManager {
    * @param {UserResolvable|FetchBanOptions|FetchBansOptions} [options] Options for fetching guild ban(s)
    * @returns {Promise<GuildBan|Collection<Snowflake, GuildBan>>}
    * @example
-   * // Fetch all bans from a guild
+   * // Fetch multiple bans from a guild
    * guild.bans.fetch()
    *   .then(console.log)
    *   .catch(console.error);
    * @example
-   * // Fetch all bans from a guild without caching
-   * guild.bans.fetch({ cache: false })
+   * // Fetch a maximum of 5 bans from a guild without caching
+   * guild.bans.fetch({ limit: 5, cache: false })
    *   .then(console.log)
    *   .catch(console.error);
    * @example
@@ -91,14 +99,15 @@ class GuildBanManager extends CachedManager {
    */
   fetch(options) {
     if (!options) return this._fetchMany();
-    const user = this.client.users.resolveId(options);
-    if (user) return this._fetchSingle({ user, cache: true });
-    options.user &&= this.client.users.resolveId(options.user);
-    if (!options.user) {
-      if ('cache' in options) return this._fetchMany(options.cache);
-      return Promise.reject(new Error('FETCH_BAN_RESOLVE_ID'));
+    const { user, cache, force, limit, before, after } = options;
+    const resolvedUser = this.client.users.resolveId(user ?? options);
+    if (resolvedUser) return this._fetchSingle({ user: resolvedUser, cache, force });
+
+    if (!before && !after && !limit && cache === undefined) {
+      return Promise.reject(new DiscordjsError(ErrorCodes.FetchBanResolveId));
     }
-    return this._fetchSingle(options);
+
+    return this._fetchMany(options);
   }
 
   async _fetchSingle({ user, cache, force = false }) {
@@ -107,19 +116,25 @@ class GuildBanManager extends CachedManager {
       if (existing && !existing.partial) return existing;
     }
 
-    const data = await this.client.api.guilds(this.guild.id).bans(user).get();
+    const data = await this.client.rest.get(Routes.guildBan(this.guild.id, user));
     return this._add(data, cache);
   }
 
-  async _fetchMany(cache) {
-    const data = await this.client.api.guilds(this.guild.id).bans.get();
-    return data.reduce((col, ban) => col.set(ban.user.id, this._add(ban, cache)), new Collection());
+  async _fetchMany(options = {}) {
+    const data = await this.client.rest.get(Routes.guildBans(this.guild.id), {
+      query: makeURLSearchParams(options),
+    });
+
+    return data.reduce((col, ban) => col.set(ban.user.id, this._add(ban, options.cache)), new Collection());
   }
 
   /**
    * Options used to ban a user from a guild.
    * @typedef {Object} BanOptions
-   * @property {number} [days=0] Number of days of messages to delete, must be between 0 and 7, inclusive
+   * @property {number} [deleteMessageDays] Number of days of messages to delete, must be between 0 and 7, inclusive
+   * <warn>This property is deprecated. Use `deleteMessageSeconds` instead.</warn>
+   * @property {number} [deleteMessageSeconds] Number of seconds of messages to delete,
+   * must be between 0 and 604800 (7 days), inclusive
    * @property {string} [reason] The reason for the ban
    */
 
@@ -136,17 +151,29 @@ class GuildBanManager extends CachedManager {
    *   .then(banInfo => console.log(`Banned ${banInfo.user?.tag ?? banInfo.tag ?? banInfo}`))
    *   .catch(console.error);
    */
-  async create(user, options = { days: 0 }) {
-    if (typeof options !== 'object') throw new TypeError('INVALID_TYPE', 'options', 'object', true);
+  async create(user, options = {}) {
+    if (typeof options !== 'object') throw new DiscordjsTypeError(ErrorCodes.InvalidType, 'options', 'object', true);
     const id = this.client.users.resolveId(user);
-    if (!id) throw new Error('BAN_RESOLVE_ID', true);
-    await this.client.api
-      .guilds(this.guild.id)
-      .bans(id)
-      .put({
-        data: { delete_message_days: options.days },
-        reason: options.reason,
-      });
+    if (!id) throw new DiscordjsError(ErrorCodes.BanResolveId, true);
+
+    if (options.deleteMessageDays !== undefined && !deprecationEmittedForDeleteMessageDays) {
+      process.emitWarning(
+        // eslint-disable-next-line max-len
+        'The deleteMessageDays option for GuildBanManager#create() is deprecated. Use the deleteMessageSeconds option instead.',
+        'DeprecationWarning',
+      );
+
+      deprecationEmittedForDeleteMessageDays = true;
+    }
+
+    await this.client.rest.put(Routes.guildBan(this.guild.id, id), {
+      body: {
+        delete_message_seconds:
+          options.deleteMessageSeconds ??
+          (options.deleteMessageDays ? options.deleteMessageDays * 24 * 60 * 60 : undefined),
+      },
+      reason: options.reason,
+    });
     if (user instanceof GuildMember) return user;
     const _user = this.client.users.resolve(id);
     if (_user) {
@@ -168,8 +195,8 @@ class GuildBanManager extends CachedManager {
    */
   async remove(user, reason) {
     const id = this.client.users.resolveId(user);
-    if (!id) throw new Error('BAN_RESOLVE_ID');
-    await this.client.api.guilds(this.guild.id).bans(id).delete({ reason });
+    if (!id) throw new DiscordjsError(ErrorCodes.BanResolveId);
+    await this.client.rest.delete(Routes.guildBan(this.guild.id, id), { reason });
     return this.client.users.resolve(user);
   }
 }

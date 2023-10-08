@@ -1,7 +1,7 @@
 'use strict';
 
 const Action = require('./Action');
-const { Events } = require('../../util/Constants');
+const Events = require('../../util/Events');
 
 class InviteCreateAction extends Action {
   handle(data) {
@@ -15,12 +15,11 @@ class InviteCreateAction extends Action {
 
     /**
      * Emitted when an invite is created.
-     * <info> This event only triggers if the client has `MANAGE_GUILD` permissions for the guild,
-     * or `MANAGE_CHANNELS` permissions for the channel.</info>
+     * <info>This event requires the {@link PermissionFlagsBits.ManageChannels} permission for the channel.</info>
      * @event Client#inviteCreate
      * @param {Invite} invite The invite that was created
      */
-    client.emit(Events.INVITE_CREATE, invite);
+    client.emit(Events.InviteCreate, invite);
     return { invite };
   }
 }

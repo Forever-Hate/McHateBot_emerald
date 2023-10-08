@@ -1,15 +1,18 @@
 'use strict';
 
-const { Channel } = require('./Channel');
-const { Error } = require('../errors');
+const { BaseChannel } = require('./BaseChannel');
+const { DiscordjsError, ErrorCodes } = require('../errors');
 
 /**
  * Represents a Partial Group DM Channel on Discord.
- * @extends {Channel}
+ * @extends {BaseChannel}
  */
-class PartialGroupDMChannel extends Channel {
+class PartialGroupDMChannel extends BaseChannel {
   constructor(client, data) {
     super(client, data);
+
+    // No flags are present when fetching partial group DM channels.
+    this.flags = null;
 
     /**
      * The name of this Group DM Channel
@@ -38,19 +41,19 @@ class PartialGroupDMChannel extends Channel {
 
   /**
    * The URL to this channel's icon.
-   * @param {StaticImageURLOptions} [options={}] Options for the Image URL
+   * @param {ImageURLOptions} [options={}] Options for the image URL
    * @returns {?string}
    */
-  iconURL({ format, size } = {}) {
-    return this.icon && this.client.rest.cdn.GDMIcon(this.id, this.icon, format, size);
+  iconURL(options = {}) {
+    return this.icon && this.client.rest.cdn.channelIcon(this.id, this.icon, options);
   }
 
   delete() {
-    return Promise.reject(new Error('DELETE_GROUP_DM_CHANNEL'));
+    return Promise.reject(new DiscordjsError(ErrorCodes.DeleteGroupDMChannel));
   }
 
   fetch() {
-    return Promise.reject(new Error('FETCH_GROUP_DM_CHANNEL'));
+    return Promise.reject(new DiscordjsError(ErrorCodes.FetchGroupDMChannel));
   }
 }
 

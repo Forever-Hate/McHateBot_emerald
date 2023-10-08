@@ -1,13 +1,13 @@
 'use strict';
 
-/* eslint-disable import/order */
+const { Collection } = require('@discordjs/collection');
+const { DiscordSnowflake } = require('@sapphire/snowflake');
+const { InteractionType, Routes } = require('discord-api-types/v10');
+const { DiscordjsTypeError, DiscordjsError, ErrorCodes } = require('../../errors');
+const { MaxBulkDeletableMessageAge } = require('../../util/Constants');
+const InteractionCollector = require('../InteractionCollector');
 const MessageCollector = require('../MessageCollector');
 const MessagePayload = require('../MessagePayload');
-const SnowflakeUtil = require('../../util/SnowflakeUtil');
-const { Collection } = require('@discordjs/collection');
-const { InteractionTypes } = require('../../util/Constants');
-const { TypeError, Error } = require('../../errors');
-const InteractionCollector = require('../InteractionCollector');
 
 /**
  * Interface for classes that have text-channel-like features.
@@ -17,9 +17,9 @@ class TextBasedChannel {
   constructor() {
     /**
      * A manager of the messages sent to this channel
-     * @type {MessageManager}
+     * @type {GuildMessageManager}
      */
-    this.messages = new MessageManager(this);
+    this.messages = new GuildMessageManager(this);
 
     /**
      * The channel's last message id, if one was sent
@@ -49,30 +49,44 @@ class TextBasedChannel {
    * @readonly
    */
   get lastPinAt() {
-    return this.lastPinTimestamp ? new Date(this.lastPinTimestamp) : null;
+    return this.lastPinTimestamp && new Date(this.lastPinTimestamp);
   }
 
   /**
-   * Base options provided when sending.
+   * The base message options for messages.
    * @typedef {Object} BaseMessageOptions
-   * @property {boolean} [tts=false] Whether or not the message should be spoken aloud
-   * @property {string} [nonce=''] The nonce for the message
-   * @property {string} [content=''] The content for the message
-   * @property {MessageEmbed[]|APIEmbed[]} [embeds] The embeds for the message
-   * (see [here](https://discord.com/developers/docs/resources/channel#embed-object) for more details)
+   * @property {string|null} [content=''] The content for the message. This can only be `null` when editing a message.
+   * @property {Array<(EmbedBuilder|Embed|APIEmbed)>} [embeds] The embeds for the message
    * @property {MessageMentionOptions} [allowedMentions] Which mentions should be parsed from the message content
    * (see [here](https://discord.com/developers/docs/resources/channel#allowed-mentions-object) for more details)
-   * @property {FileOptions[]|BufferResolvable[]|MessageAttachment[]} [files] Files to send with the message
-   * @property {MessageActionRow[]|MessageActionRowOptions[]} [components]
+   * @property {Array<(AttachmentBuilder|Attachment|AttachmentPayload|BufferResolvable)>} [files]
+   * The files to send with the message.
+   * @property {Array<(ActionRowBuilder|ActionRow|APIActionRowComponent)>} [components]
    * Action rows containing interactive components for the message (buttons, select menus)
-   * @property {MessageAttachment[]} [attachments] Attachments to send in the message
    */
 
   /**
-   * Options provided when sending or editing a message.
-   * @typedef {BaseMessageOptions} MessageOptions
+   * Options for sending a message with a reply.
+   * @typedef {Object} ReplyOptions
+   * @property {MessageResolvable} messageReference The message to reply to (must be in the same channel and not system)
+   * @property {boolean} [failIfNotExists=this.client.options.failIfNotExists] Whether to error if the referenced
+   * message does not exist (creates a standard message in this case when false)
+   */
+
+  /**
+   * The options for sending a message.
+   * @typedef {BaseMessageOptions} BaseMessageCreateOptions
+   * @property {boolean} [tts=false] Whether the message should be spoken aloud
+   * @property {string} [nonce=''] The nonce for the message
+   * @property {StickerResolvable[]} [stickers=[]] The stickers to send in the message
+   * @property {MessageFlags} [flags] Which flags to set for the message.
+   * <info>Only `MessageFlags.SuppressEmbeds` and `MessageFlags.SuppressNotifications` can be set.</info>
+   */
+
+  /**
+   * The options for sending a message.
+   * @typedef {BaseMessageCreateOptions} MessageCreateOptions
    * @property {ReplyOptions} [reply] The options for replying to a message
-   * @property {StickerResolvable[]} [stickers=[]] Stickers to send in the message
    */
 
   /**
@@ -100,16 +114,8 @@ class TextBasedChannel {
    */
 
   /**
-   * Options for sending a message with a reply.
-   * @typedef {Object} ReplyOptions
-   * @property {MessageResolvable} messageReference The message to reply to (must be in the same channel and not system)
-   * @property {boolean} [failIfNotExists=true] Whether to error if the referenced message
-   * does not exist (creates a standard message in this case when false)
-   */
-
-  /**
    * Sends a message to this channel.
-   * @param {string|MessagePayload|MessageOptions} options The options to provide
+   * @param {string|MessagePayload|MessageCreateOptions} options The options to provide
    * @returns {Promise<Message>}
    * @example
    * // Send a basic message
@@ -128,26 +134,7 @@ class TextBasedChannel {
    * channel.send({
    *   files: [{
    *     attachment: 'entire/path/to/file.jpg',
-   *     name: 'file.jpg'
-   *     description: 'A description of the file'
-   *   }]
-   * })
-   *   .then(console.log)
-   *   .catch(console.error);
-   * @example
-   * // Send an embed with a local image inside
-   * channel.send({
-   *   content: 'This is an embed',
-   *   embeds: [
-   *     {
-   *       thumbnail: {
-   *         url: 'attachment://file.jpg'
-   *       }
-   *     }
-   *   ],
-   *   files: [{
-   *     attachment: 'entire/path/to/file.jpg',
-   *     name: 'file.jpg'
+   *     name: 'file.jpg',
    *     description: 'A description of the file'
    *   }]
    * })
@@ -166,13 +153,13 @@ class TextBasedChannel {
     let messagePayload;
 
     if (options instanceof MessagePayload) {
-      messagePayload = options.resolveData();
+      messagePayload = options.resolveBody();
     } else {
-      messagePayload = MessagePayload.create(this, options).resolveData();
+      messagePayload = MessagePayload.create(this, options).resolveBody();
     }
 
-    const { data, files } = await messagePayload.resolveFiles();
-    const d = await this.client.api.channels[this.id].messages.post({ data, files });
+    const { body, files } = await messagePayload.resolveFiles();
+    const d = await this.client.rest.post(Routes.channelMessages(this.id), { body, files });
 
     return this.messages.cache.get(d.id) ?? this.messages._add(d);
   }
@@ -185,7 +172,7 @@ class TextBasedChannel {
    * channel.sendTyping();
    */
   async sendTyping() {
-    await this.client.api.channels(this.id).typing.post();
+    await this.client.rest.post(Routes.channelTyping(this.id));
   }
 
   /**
@@ -236,7 +223,7 @@ class TextBasedChannel {
   }
 
   /**
-   * Creates a button interaction collector.
+   * Creates a component interaction collector.
    * @param {MessageComponentCollectorOptions} [options={}] Options to send to the collector
    * @returns {InteractionCollector}
    * @example
@@ -249,7 +236,7 @@ class TextBasedChannel {
   createMessageComponentCollector(options = {}) {
     return new InteractionCollector(this.client, {
       ...options,
-      interactionType: InteractionTypes.MESSAGE_COMPONENT,
+      interactionType: InteractionType.MessageComponent,
       channel: this,
     });
   }
@@ -273,7 +260,7 @@ class TextBasedChannel {
       collector.once('end', (interactions, reason) => {
         const interaction = interactions.first();
         if (interaction) resolve(interaction);
-        else reject(new Error('INTERACTION_COLLECTOR_ERROR', reason));
+        else reject(new DiscordjsError(ErrorCodes.InteractionCollectorError, reason));
       });
     });
   }
@@ -283,7 +270,7 @@ class TextBasedChannel {
    * @param {Collection<Snowflake, Message>|MessageResolvable[]|number} messages
    * Messages or number of messages to delete
    * @param {boolean} [filterOld=false] Filter messages to remove those which are older than two weeks automatically
-   * @returns {Promise<Collection<Snowflake, Message>>} Returns the deleted messages
+   * @returns {Promise<Collection<Snowflake, Message|undefined>>} Returns the deleted messages
    * @example
    * // Bulk delete messages
    * channel.bulkDelete(5)
@@ -294,20 +281,22 @@ class TextBasedChannel {
     if (Array.isArray(messages) || messages instanceof Collection) {
       let messageIds = messages instanceof Collection ? [...messages.keys()] : messages.map(m => m.id ?? m);
       if (filterOld) {
-        messageIds = messageIds.filter(id => Date.now() - SnowflakeUtil.timestampFrom(id) < 1_209_600_000);
+        messageIds = messageIds.filter(
+          id => Date.now() - DiscordSnowflake.timestampFrom(id) < MaxBulkDeletableMessageAge,
+        );
       }
       if (messageIds.length === 0) return new Collection();
       if (messageIds.length === 1) {
-        await this.client.api.channels(this.id).messages(messageIds[0]).delete();
         const message = this.client.actions.MessageDelete.getMessage(
           {
             message_id: messageIds[0],
           },
           this,
         );
+        await this.client.rest.delete(Routes.channelMessage(this.id, messageIds[0]));
         return message ? new Collection([[message.id, message]]) : new Collection();
       }
-      await this.client.api.channels[this.id].messages['bulk-delete'].post({ data: { messages: messageIds } });
+      await this.client.rest.post(Routes.channelBulkDelete(this.id), { body: { messages: messageIds } });
       return messageIds.reduce(
         (col, id) =>
           col.set(
@@ -326,7 +315,66 @@ class TextBasedChannel {
       const msgs = await this.messages.fetch({ limit: messages });
       return this.bulkDelete(msgs, filterOld);
     }
-    throw new TypeError('MESSAGE_BULK_DELETE_TYPE');
+    throw new DiscordjsTypeError(ErrorCodes.MessageBulkDeleteType);
+  }
+
+  /**
+   * Fetches all webhooks for the channel.
+   * @returns {Promise<Collection<Snowflake, Webhook>>}
+   * @example
+   * // Fetch webhooks
+   * channel.fetchWebhooks()
+   *   .then(hooks => console.log(`This channel has ${hooks.size} hooks`))
+   *   .catch(console.error);
+   */
+  fetchWebhooks() {
+    return this.guild.channels.fetchWebhooks(this.id);
+  }
+
+  /**
+   * Options used to create a {@link Webhook}.
+   * @typedef {Object} ChannelWebhookCreateOptions
+   * @property {string} name The name of the webhook
+   * @property {?(BufferResolvable|Base64Resolvable)} [avatar] Avatar for the webhook
+   * @property {string} [reason] Reason for creating the webhook
+   */
+
+  /**
+   * Creates a webhook for the channel.
+   * @param {ChannelWebhookCreateOptions} [options] Options for creating the webhook
+   * @returns {Promise<Webhook>} Returns the created Webhook
+   * @example
+   * // Create a webhook for the current channel
+   * channel.createWebhook({
+   *   name: 'Snek',
+   *   avatar: 'https://i.imgur.com/mI8XcpG.jpg',
+   *   reason: 'Needed a cool new Webhook'
+   * })
+   *   .then(console.log)
+   *   .catch(console.error)
+   */
+  createWebhook(options) {
+    return this.guild.channels.createWebhook({ channel: this.id, ...options });
+  }
+
+  /**
+   * Sets the rate limit per user (slowmode) for this channel.
+   * @param {number} rateLimitPerUser The new rate limit in seconds
+   * @param {string} [reason] Reason for changing the channel's rate limit
+   * @returns {Promise<this>}
+   */
+  setRateLimitPerUser(rateLimitPerUser, reason) {
+    return this.edit({ rateLimitPerUser, reason });
+  }
+
+  /**
+   * Sets whether this channel is flagged as NSFW.
+   * @param {boolean} [nsfw=true] Whether the channel should be considered NSFW
+   * @param {string} [reason] Reason for changing the channel's NSFW flag
+   * @returns {Promise<this>}
+   */
+  setNSFW(nsfw = true, reason) {
+    return this.edit({ nsfw, reason });
   }
 
   static applyToClass(structure, full = false, ignore = []) {
@@ -341,6 +389,10 @@ class TextBasedChannel {
         'awaitMessages',
         'createMessageComponentCollector',
         'awaitMessageComponent',
+        'fetchWebhooks',
+        'createWebhook',
+        'setRateLimitPerUser',
+        'setNSFW',
       );
     }
     for (const prop of props) {
@@ -357,4 +409,5 @@ class TextBasedChannel {
 module.exports = TextBasedChannel;
 
 // Fixes Circular
-const MessageManager = require('../../managers/MessageManager');
+// eslint-disable-next-line import/order
+const GuildMessageManager = require('../../managers/GuildMessageManager');

@@ -1,0 +1,43 @@
+{
+  "store_emerald_interval": 1.5,
+  "store_emerald_check_times": 5,
+  "enable_store_log":false,
+  "enable_auto_repair":true,
+  "enable_auto_send_store_report":false,
+  "enable_multiple_place_store": false,
+  "store_place": [""],
+  "enable_afk_after_store": false,
+  "afk_place": [""],
+
+  "enable_pay_log":false,
+  "transfer_interval":15,
+
+  "enable_trade_announcement": false,
+  "trade_announce_cycleTime": 605,
+  "enable_trade_content_cycle": true,
+  "content_skip_count": 1,
+  "trade_content": [
+    [
+      "",
+      ""
+    ]
+  ],
+
+  "enable_reply_msg": false,
+  "forward_ID": "請填入要接收轉發訊息的minecraft玩家ID(enable_reply_msg:true 就需要填寫)",
+  "clear_reply_id_delay_time": 600,
+  "enable_auto_reply": false,
+  "auto_reply_week": "1-7",
+  "auto_reply_time": "00:00-08:00",
+  "auto_reply_content": "",
+  
+  "enable_discord_bot": false,
+  "forward_DC_ID": ["請填入要接收轉發訊息的DC使用者ID(enable_discord_bot:true 就需要填寫)"],
+  "enable_send_msg_to_channel": false,
+  "directly_send_msg_to_dc": false,
+  "channel_ID": "enable_send_msg_to_channel:true 就需要填寫",
+  "embed_thumbnail_url":"https://static.wikia.nocookie.net/minecraft_gamepedia/images/a/a9/Emerald_Ore_JE4_BE3.png",
+  "enable_slash_command":false,
+  "bot_application_ID":"enable_slash_command:true 就需要填寫",
+  "bot_token": "enable_discord_bot:true 就需要填寫"
+}

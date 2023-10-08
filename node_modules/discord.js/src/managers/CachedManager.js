@@ -1,7 +1,7 @@
 'use strict';
 
 const DataManager = require('./DataManager');
-const { _cleanupSymbol } = require('../util/Constants');
+const { MakeCacheOverrideSymbol } = require('../util/Symbols');
 
 /**
  * Manages the API methods of a data model with a mutable cache of instances.
@@ -12,20 +12,20 @@ class CachedManager extends DataManager {
   constructor(client, holds, iterable) {
     super(client, holds);
 
-    Object.defineProperty(this, '_cache', { value: this.client.options.makeCache(this.constructor, this.holds) });
-
-    let cleanup = this._cache[_cleanupSymbol]?.();
-    if (cleanup) {
-      cleanup = cleanup.bind(this._cache);
-      client._cleanups.add(cleanup);
-      client._finalizers.register(this, {
-        cleanup,
-        message:
-          `Garbage collection completed on ${this.constructor.name}, ` +
-          `which had a ${this._cache.constructor.name} of ${this.holds.name}.`,
-        name: this.constructor.name,
-      });
-    }
+    /**
+     * The private cache of items for this manager.
+     * @type {Collection}
+     * @private
+     * @readonly
+     * @name CachedManager#_cache
+     */
+    Object.defineProperty(this, '_cache', {
+      value: this.client.options.makeCache(
+        this.constructor[MakeCacheOverrideSymbol] ?? this.constructor,
+        this.holds,
+        this.constructor,
+      ),
+    });
 
     if (iterable) {
       for (const item of iterable) {

@@ -2,15 +2,14 @@
 
 const Base = require('./Base');
 const { Emoji } = require('./Emoji');
-const ActivityFlags = require('../util/ActivityFlags');
-const { ActivityTypes } = require('../util/Constants');
-const Util = require('../util/Util');
+const ActivityFlagsBitField = require('../util/ActivityFlagsBitField');
+const { flatten } = require('../util/Util');
 
 /**
  * Activity sent in a message.
  * @typedef {Object} MessageActivity
  * @property {string} [partyId] Id of the party represented in activity
- * @property {number} [type] Type of activity sent
+ * @property {MessageActivityType} type Type of activity sent
  */
 
 /**
@@ -133,30 +132,22 @@ class Presence extends Base {
   }
 
   toJSON() {
-    return Util.flatten(this);
+    return flatten(this);
   }
 }
-
-/**
- * The platform of this activity:
- * * **`desktop`**
- * * **`samsung`** - playing on Samsung Galaxy
- * * **`xbox`** - playing on Xbox Live
- * @typedef {string} ActivityPlatform
- */
 
 /**
  * Represents an activity that is part of a user's presence.
  */
 class Activity {
   constructor(presence, data) {
-    Object.defineProperty(this, 'presence', { value: presence });
-
     /**
-     * The activity's id
-     * @type {string}
+     * The presence of the Activity
+     * @type {Presence}
+     * @readonly
+     * @name Activity#presence
      */
-    this.id = data.id;
+    Object.defineProperty(this, 'presence', { value: presence });
 
     /**
      * The activity's name
@@ -168,7 +159,7 @@ class Activity {
      * The activity status's type
      * @type {ActivityType}
      */
-    this.type = typeof data.type === 'number' ? ActivityTypes[data.type] : data.type;
+    this.type = data.type;
 
     /**
      * If the activity is being streamed, a link to the stream
@@ -213,18 +204,6 @@ class Activity {
       : null;
 
     /**
-     * The Spotify song's id
-     * @type {?string}
-     */
-    this.syncId = data.sync_id ?? null;
-
-    /**
-     * The platform the game is being played on
-     * @type {?ActivityPlatform}
-     */
-    this.platform = data.platform ?? null;
-
-    /**
      * Represents a party of an activity
      * @typedef {Object} ActivityParty
      * @property {?string} id The party's id
@@ -245,21 +224,15 @@ class Activity {
 
     /**
      * Flags that describe the activity
-     * @type {Readonly<ActivityFlags>}
+     * @type {Readonly<ActivityFlagsBitField>}
      */
-    this.flags = new ActivityFlags(data.flags).freeze();
+    this.flags = new ActivityFlagsBitField(data.flags).freeze();
 
     /**
      * Emoji for a custom activity
      * @type {?Emoji}
      */
     this.emoji = data.emoji ? new Emoji(presence.client, data.emoji) : null;
-
-    /**
-     * The game's or Spotify session's id
-     * @type {?string}
-     */
-    this.sessionId = data.session_id ?? null;
 
     /**
      * The labels of the buttons of this rich presence
@@ -271,7 +244,7 @@ class Activity {
      * Creation date of the activity
      * @type {number}
      */
-    this.createdTimestamp = new Date(data.created_at).getTime();
+    this.createdTimestamp = data.created_at;
   }
 
   /**
@@ -287,7 +260,9 @@ class Activity {
         this.type === activity.type &&
         this.url === activity.url &&
         this.state === activity.state &&
-        this.details === activity.details)
+        this.details === activity.details &&
+        this.emoji?.id === activity.emoji?.id &&
+        this.emoji?.name === activity.emoji?.name)
     );
   }
 
@@ -301,7 +276,7 @@ class Activity {
   }
 
   /**
-   * When concatenated with a string, this automatically returns the activities' name instead of the Activity object.
+   * When concatenated with a string, this automatically returns the activity's name instead of the Activity object.
    * @returns {string}
    */
   toString() {
@@ -318,6 +293,12 @@ class Activity {
  */
 class RichPresenceAssets {
   constructor(activity, assets) {
+    /**
+     * The activity of the RichPresenceAssets
+     * @type {Activity}
+     * @readonly
+     * @name RichPresenceAssets#activity
+     */
     Object.defineProperty(this, 'activity', { value: activity });
 
     /**
@@ -347,35 +328,48 @@ class RichPresenceAssets {
 
   /**
    * Gets the URL of the small image asset
-   * @param {StaticImageURLOptions} [options] Options for the image URL
+   * @param {ImageURLOptions} [options={}] Options for the image URL
    * @returns {?string}
    */
-  smallImageURL({ format, size } = {}) {
-    return (
-      this.smallImage &&
-      this.activity.presence.client.rest.cdn.AppAsset(this.activity.applicationId, this.smallImage, {
-        format,
-        size,
-      })
-    );
+  smallImageURL(options = {}) {
+    if (!this.smallImage) return null;
+    if (this.smallImage.includes(':')) {
+      const [platform, id] = this.smallImage.split(':');
+      switch (platform) {
+        case 'mp':
+          return `https://media.discordapp.net/${id}`;
+        default:
+          return null;
+      }
+    }
+
+    return this.activity.presence.client.rest.cdn.appAsset(this.activity.applicationId, this.smallImage, options);
   }
 
   /**
    * Gets the URL of the large image asset
-   * @param {StaticImageURLOptions} [options] Options for the image URL
+   * @param {ImageURLOptions} [options={}] Options for the image URL
    * @returns {?string}
    */
-  largeImageURL({ format, size } = {}) {
+  largeImageURL(options = {}) {
     if (!this.largeImage) return null;
-    if (/^spotify:/.test(this.largeImage)) {
-      return `https://i.scdn.co/image/${this.largeImage.slice(8)}`;
-    } else if (/^twitch:/.test(this.largeImage)) {
-      return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${this.largeImage.slice(7)}.png`;
+    if (this.largeImage.includes(':')) {
+      const [platform, id] = this.largeImage.split(':');
+      switch (platform) {
+        case 'mp':
+          return `https://media.discordapp.net/${id}`;
+        case 'spotify':
+          return `https://i.scdn.co/image/${id}`;
+        case 'youtube':
+          return `https://i.ytimg.com/vi/${id}/hqdefault_live.jpg`;
+        case 'twitch':
+          return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${id}.png`;
+        default:
+          return null;
+      }
     }
-    return this.activity.presence.client.rest.cdn.AppAsset(this.activity.applicationId, this.largeImage, {
-      format,
-      size,
-    });
+
+    return this.activity.presence.client.rest.cdn.appAsset(this.activity.applicationId, this.largeImage, options);
   }
 }
 

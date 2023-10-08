@@ -68,7 +68,7 @@ module.exports = function (mcVersion, preNetty) {
   nmcData.isOlderThan = version => nmcData.version['<'](version)
   nmcData.version = Object.assign(majorVersion, nmcData.version)
   cache[cachedName] = nmcData
-  nmcData.supportFeature = feature => supportFeature(feature, nmcData.version)
+  nmcData.supportFeature = supportFeature(nmcData.version, protocolVersions[nmcData.type])
   return nmcData
 }
 
@@ -107,7 +107,8 @@ module.exports.versionsByMinecraftVersion = versionsByMinecraftVersion
 module.exports.preNettyVersionsByProtocolVersion = preNettyVersionsByProtocolVersion
 module.exports.postNettyVersionsByProtocolVersion = postNettyVersionsByProtocolVersion
 module.exports.legacy = {
-  pc: require('./minecraft-data/data/pc/common/legacy.json')
+  pc: require('./minecraft-data/data/pc/common/legacy.json'),
+  bedrock: require('./minecraft-data/data/bedrock/common/legacy.json')
 }
 
 const schemas = {

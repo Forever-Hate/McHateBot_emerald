@@ -2,8 +2,7 @@
 
 const { Collection } = require('@discordjs/collection');
 const Action = require('./Action');
-const { deletedMessages } = require('../../structures/Message');
-const { Events } = require('../../util/Constants');
+const Events = require('../../util/Events');
 
 class MessageDeleteBulkAction extends Action {
   handle(data) {
@@ -11,7 +10,9 @@ class MessageDeleteBulkAction extends Action {
     const channel = client.channels.cache.get(data.channel_id);
 
     if (channel) {
-      if (!channel.isText()) return {};
+      if (!channel.isTextBased()) return {};
+
+      if (channel.isThread()) channel.messageCount -= data.ids.length;
 
       const ids = data.ids;
       const messages = new Collection();
@@ -25,7 +26,6 @@ class MessageDeleteBulkAction extends Action {
           false,
         );
         if (message) {
-          deletedMessages.add(message);
           messages.set(message.id, message);
           channel.messages.cache.delete(id);
         }
@@ -35,8 +35,9 @@ class MessageDeleteBulkAction extends Action {
        * Emitted whenever messages are deleted in bulk.
        * @event Client#messageDeleteBulk
        * @param {Collection<Snowflake, Message>} messages The deleted messages, mapped by their id
+       * @param {GuildTextBasedChannel} channel The channel that the messages were deleted in
        */
-      if (messages.size > 0) client.emit(Events.MESSAGE_BULK_DELETE, messages);
+      if (messages.size > 0) client.emit(Events.MessageBulkDelete, messages, channel);
       return { messages };
     }
     return {};

@@ -1,14 +1,14 @@
 'use strict';
 
 const Base = require('./Base');
-const ThreadMemberFlags = require('../util/ThreadMemberFlags');
+const ThreadMemberFlagsBitField = require('../util/ThreadMemberFlagsBitField');
 
 /**
  * Represents a Member for a Thread.
  * @extends {Base}
  */
 class ThreadMember extends Base {
-  constructor(thread, data) {
+  constructor(thread, data, extra = {}) {
     super(thread.client);
 
     /**
@@ -24,24 +24,43 @@ class ThreadMember extends Base {
     this.joinedTimestamp = null;
 
     /**
+     * The flags for this thread member. This will be `null` if partial.
+     * @type {?ThreadMemberFlagsBitField}
+     */
+    this.flags = null;
+
+    /**
      * The id of the thread member
      * @type {Snowflake}
      */
     this.id = data.user_id;
 
-    this._patch(data);
+    this._patch(data, extra);
   }
 
-  _patch(data) {
-    if ('join_timestamp' in data) this.joinedTimestamp = new Date(data.join_timestamp).getTime();
+  _patch(data, extra = {}) {
+    if ('join_timestamp' in data) this.joinedTimestamp = Date.parse(data.join_timestamp);
+    if ('flags' in data) this.flags = new ThreadMemberFlagsBitField(data.flags).freeze();
 
-    if ('flags' in data) {
+    if ('member' in data) {
       /**
-       * The flags for this thread member
-       * @type {ThreadMemberFlags}
+       * The guild member associated with this thread member.
+       * @type {?GuildMember}
+       * @private
        */
-      this.flags = new ThreadMemberFlags(data.flags).freeze();
+      this.member = this.thread.guild.members._add(data.member, extra.cache);
+    } else {
+      this.member ??= null;
     }
+  }
+
+  /**
+   * Whether this thread member is a partial
+   * @type {boolean}
+   * @readonly
+   */
+  get partial() {
+    return this.flags === null;
   }
 
   /**
@@ -50,7 +69,7 @@ class ThreadMember extends Base {
    * @readonly
    */
   get guildMember() {
-    return this.thread.guild.members.resolve(this.id);
+    return this.member ?? this.thread.guild.members.resolve(this.id);
   }
 
   /**
@@ -59,7 +78,7 @@ class ThreadMember extends Base {
    * @readonly
    */
   get joinedAt() {
-    return this.joinedTimestamp ? new Date(this.joinedTimestamp) : null;
+    return this.joinedTimestamp && new Date(this.joinedTimestamp);
   }
 
   /**

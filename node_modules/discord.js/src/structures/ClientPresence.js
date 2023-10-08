@@ -1,8 +1,8 @@
 'use strict';
 
+const { GatewayOpcodes, ActivityType } = require('discord-api-types/v10');
 const { Presence } = require('./Presence');
-const { TypeError } = require('../errors');
-const { ActivityTypes, Opcodes } = require('../util/Constants');
+const { DiscordjsTypeError, ErrorCodes } = require('../errors');
 
 /**
  * Represents the client's presence.
@@ -21,14 +21,14 @@ class ClientPresence extends Presence {
   set(presence) {
     const packet = this._parse(presence);
     this._patch(packet);
-    if (typeof presence.shardId === 'undefined') {
-      this.client.ws.broadcast({ op: Opcodes.STATUS_UPDATE, d: packet });
+    if (presence.shardId === undefined) {
+      this.client.ws.broadcast({ op: GatewayOpcodes.PresenceUpdate, d: packet });
     } else if (Array.isArray(presence.shardId)) {
       for (const shardId of presence.shardId) {
-        this.client.ws.shards.get(shardId).send({ op: Opcodes.STATUS_UPDATE, d: packet });
+        this.client.ws.shards.get(shardId).send({ op: GatewayOpcodes.PresenceUpdate, d: packet });
       }
     } else {
-      this.client.ws.shards.get(presence.shardId).send({ op: Opcodes.STATUS_UPDATE, d: packet });
+      this.client.ws.shards.get(presence.shardId).send({ op: GatewayOpcodes.PresenceUpdate, d: packet });
     }
     return this;
   }
@@ -48,12 +48,21 @@ class ClientPresence extends Presence {
     };
     if (activities?.length) {
       for (const [i, activity] of activities.entries()) {
-        if (typeof activity.name !== 'string') throw new TypeError('INVALID_TYPE', `activities[${i}].name`, 'string');
-        activity.type ??= 0;
+        if (typeof activity.name !== 'string') {
+          throw new DiscordjsTypeError(ErrorCodes.InvalidType, `activities[${i}].name`, 'string');
+        }
+
+        activity.type ??= ActivityType.Playing;
+
+        if (activity.type === ActivityType.Custom && !activity.state) {
+          activity.state = activity.name;
+          activity.name = 'Custom Status';
+        }
 
         data.activities.push({
-          type: typeof activity.type === 'number' ? activity.type : ActivityTypes[activity.type],
+          type: activity.type,
           name: activity.name,
+          state: activity.state,
           url: activity.url,
         });
       }
@@ -61,7 +70,8 @@ class ClientPresence extends Presence {
       data.activities.push(
         ...this.activities.map(a => ({
           name: a.name,
-          type: ActivityTypes[a.type],
+          state: a.state ?? undefined,
+          type: a.type,
           url: a.url ?? undefined,
         })),
       );

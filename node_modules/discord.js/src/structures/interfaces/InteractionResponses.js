@@ -1,9 +1,18 @@
 'use strict';
 
-const { Error } = require('../../errors');
-const { InteractionResponseTypes } = require('../../util/Constants');
-const MessageFlags = require('../../util/MessageFlags');
+const { isJSONEncodable } = require('@discordjs/util');
+const { InteractionResponseType, MessageFlags, Routes, InteractionType } = require('discord-api-types/v10');
+const { DiscordjsError, ErrorCodes } = require('../../errors');
+const InteractionCollector = require('../InteractionCollector');
+const InteractionResponse = require('../InteractionResponse');
 const MessagePayload = require('../MessagePayload');
+
+/**
+ * @typedef {Object} ModalComponentData
+ * @property {string} title The title of the modal
+ * @property {string} customId The custom id of the modal
+ * @property {ActionRow[]} components The components within this modal
+ */
 
 /**
  * Interface for classes that support shared interaction response types.
@@ -11,7 +20,7 @@ const MessagePayload = require('../MessagePayload');
  */
 class InteractionResponses {
   /**
-   * Options for deferring the reply to an {@link Interaction}.
+   * Options for deferring the reply to an {@link BaseInteraction}.
    * @typedef {Object} InteractionDeferReplyOptions
    * @property {boolean} [ephemeral] Whether the reply should be ephemeral
    * @property {boolean} [fetchReply] Whether to fetch the reply
@@ -24,10 +33,13 @@ class InteractionResponses {
    */
 
   /**
-   * Options for a reply to an {@link Interaction}.
+   * Options for a reply to a {@link BaseInteraction}.
    * @typedef {BaseMessageOptions} InteractionReplyOptions
+   * @property {boolean} [tts=false] Whether the message should be spoken aloud
    * @property {boolean} [ephemeral] Whether the reply should be ephemeral
    * @property {boolean} [fetchReply] Whether to fetch the reply
+   * @property {MessageFlags} [flags] Which flags to set for the message.
+   * <info>Only `MessageFlags.SuppressEmbeds` and `MessageFlags.Ephemeral` can be set.</info>
    */
 
   /**
@@ -39,7 +51,7 @@ class InteractionResponses {
   /**
    * Defers the reply to this interaction.
    * @param {InteractionDeferReplyOptions} [options] Options for deferring the reply to this interaction
-   * @returns {Promise<Message|APIMessage|void>}
+   * @returns {Promise<Message|InteractionResponse>}
    * @example
    * // Defer the reply to this interaction
    * interaction.deferReply()
@@ -52,27 +64,27 @@ class InteractionResponses {
    *   .catch(console.error);
    */
   async deferReply(options = {}) {
-    if (this.deferred || this.replied) throw new Error('INTERACTION_ALREADY_REPLIED');
+    if (this.deferred || this.replied) throw new DiscordjsError(ErrorCodes.InteractionAlreadyReplied);
     this.ephemeral = options.ephemeral ?? false;
-    await this.client.api.interactions(this.id, this.token).callback.post({
-      data: {
-        type: InteractionResponseTypes.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE,
+    await this.client.rest.post(Routes.interactionCallback(this.id, this.token), {
+      body: {
+        type: InteractionResponseType.DeferredChannelMessageWithSource,
         data: {
-          flags: options.ephemeral ? MessageFlags.FLAGS.EPHEMERAL : undefined,
+          flags: options.ephemeral ? MessageFlags.Ephemeral : undefined,
         },
       },
       auth: false,
     });
     this.deferred = true;
 
-    return options.fetchReply ? this.fetchReply() : undefined;
+    return options.fetchReply ? this.fetchReply() : new InteractionResponse(this);
   }
 
   /**
    * Creates a reply to this interaction.
    * <info>Use the `fetchReply` option to get the bot's reply message.</info>
    * @param {string|MessagePayload|InteractionReplyOptions} options The options for the reply
-   * @returns {Promise<Message|APIMessage|void>}
+   * @returns {Promise<Message|InteractionResponse>}
    * @example
    * // Reply to the interaction and fetch the response
    * interaction.reply({ content: 'Pong!', fetchReply: true })
@@ -80,25 +92,25 @@ class InteractionResponses {
    *   .catch(console.error);
    * @example
    * // Create an ephemeral reply with an embed
-   * const embed = new MessageEmbed().setDescription('Pong!');
+   * const embed = new EmbedBuilder().setDescription('Pong!');
    *
    * interaction.reply({ embeds: [embed], ephemeral: true })
    *   .then(() => console.log('Reply sent.'))
    *   .catch(console.error);
    */
   async reply(options) {
-    if (this.deferred || this.replied) throw new Error('INTERACTION_ALREADY_REPLIED');
+    if (this.deferred || this.replied) throw new DiscordjsError(ErrorCodes.InteractionAlreadyReplied);
     this.ephemeral = options.ephemeral ?? false;
 
     let messagePayload;
     if (options instanceof MessagePayload) messagePayload = options;
     else messagePayload = MessagePayload.create(this, options);
 
-    const { data, files } = await messagePayload.resolveData().resolveFiles();
+    const { body: data, files } = await messagePayload.resolveBody().resolveFiles();
 
-    await this.client.api.interactions(this.id, this.token).callback.post({
-      data: {
-        type: InteractionResponseTypes.CHANNEL_MESSAGE_WITH_SOURCE,
+    await this.client.rest.post(Routes.interactionCallback(this.id, this.token), {
+      body: {
+        type: InteractionResponseType.ChannelMessageWithSource,
         data,
       },
       files,
@@ -106,70 +118,77 @@ class InteractionResponses {
     });
     this.replied = true;
 
-    return options.fetchReply ? this.fetchReply() : undefined;
+    return options.fetchReply ? this.fetchReply() : new InteractionResponse(this);
   }
 
   /**
-   * Fetches the initial reply to this interaction.
+   * Fetches a reply to this interaction.
    * @see Webhook#fetchMessage
-   * @returns {Promise<Message|APIMessage>}
+   * @param {Snowflake|'@original'} [message='@original'] The response to fetch
+   * @returns {Promise<Message>}
    * @example
-   * // Fetch the reply to this interaction
+   * // Fetch the initial reply to this interaction
    * interaction.fetchReply()
    *   .then(reply => console.log(`Replied with ${reply.content}`))
    *   .catch(console.error);
    */
-  fetchReply() {
-    return this.webhook.fetchMessage('@original');
+  fetchReply(message = '@original') {
+    return this.webhook.fetchMessage(message);
   }
 
   /**
-   * Edits the initial reply to this interaction.
+   * Options that can be passed into {@link InteractionResponses#editReply}.
+   * @typedef {WebhookMessageEditOptions} InteractionEditReplyOptions
+   * @property {MessageResolvable|'@original'} [message='@original'] The response to edit
+   */
+
+  /**
+   * Edits a reply to this interaction.
    * @see Webhook#editMessage
-   * @param {string|MessagePayload|WebhookEditMessageOptions} options The new options for the message
-   * @returns {Promise<Message|APIMessage>}
+   * @param {string|MessagePayload|InteractionEditReplyOptions} options The new options for the message
+   * @returns {Promise<Message>}
    * @example
-   * // Edit the reply to this interaction
+   * // Edit the initial reply to this interaction
    * interaction.editReply('New content')
    *   .then(console.log)
    *   .catch(console.error);
    */
   async editReply(options) {
-    if (!this.deferred && !this.replied) throw new Error('INTERACTION_NOT_REPLIED');
-    const message = await this.webhook.editMessage('@original', options);
+    if (!this.deferred && !this.replied) throw new DiscordjsError(ErrorCodes.InteractionNotReplied);
+    const msg = await this.webhook.editMessage(options.message ?? '@original', options);
     this.replied = true;
-    return message;
+    return msg;
   }
 
   /**
-   * Deletes the initial reply to this interaction.
+   * Deletes a reply to this interaction.
    * @see Webhook#deleteMessage
+   * @param {MessageResolvable|'@original'} [message='@original'] The response to delete
    * @returns {Promise<void>}
    * @example
-   * // Delete the reply to this interaction
+   * // Delete the initial reply to this interaction
    * interaction.deleteReply()
    *   .then(console.log)
    *   .catch(console.error);
    */
-  async deleteReply() {
-    if (this.ephemeral) throw new Error('INTERACTION_EPHEMERAL_REPLIED');
-    await this.webhook.deleteMessage('@original');
+  async deleteReply(message = '@original') {
+    await this.webhook.deleteMessage(message);
   }
 
   /**
    * Send a follow-up message to this interaction.
    * @param {string|MessagePayload|InteractionReplyOptions} options The options for the reply
-   * @returns {Promise<Message|APIMessage>}
+   * @returns {Promise<Message>}
    */
   followUp(options) {
-    if (!this.deferred && !this.replied) return Promise.reject(new Error('INTERACTION_NOT_REPLIED'));
+    if (!this.deferred && !this.replied) return Promise.reject(new DiscordjsError(ErrorCodes.InteractionNotReplied));
     return this.webhook.send(options);
   }
 
   /**
    * Defers an update to the message to which the component was attached.
    * @param {InteractionDeferUpdateOptions} [options] Options for deferring the update to this interaction
-   * @returns {Promise<Message|APIMessage|void>}
+   * @returns {Promise<Message|InteractionResponse>}
    * @example
    * // Defer updating and reset the component's loading state
    * interaction.deferUpdate()
@@ -177,22 +196,22 @@ class InteractionResponses {
    *   .catch(console.error);
    */
   async deferUpdate(options = {}) {
-    if (this.deferred || this.replied) throw new Error('INTERACTION_ALREADY_REPLIED');
-    await this.client.api.interactions(this.id, this.token).callback.post({
-      data: {
-        type: InteractionResponseTypes.DEFERRED_MESSAGE_UPDATE,
+    if (this.deferred || this.replied) throw new DiscordjsError(ErrorCodes.InteractionAlreadyReplied);
+    await this.client.rest.post(Routes.interactionCallback(this.id, this.token), {
+      body: {
+        type: InteractionResponseType.DeferredMessageUpdate,
       },
       auth: false,
     });
     this.deferred = true;
 
-    return options.fetchReply ? this.fetchReply() : undefined;
+    return options.fetchReply ? this.fetchReply() : new InteractionResponse(this, this.message?.interaction?.id);
   }
 
   /**
    * Updates the original message of the component on which the interaction was received on.
    * @param {string|MessagePayload|InteractionUpdateOptions} options The options for the updated message
-   * @returns {Promise<Message|APIMessage|void>}
+   * @returns {Promise<Message|void>}
    * @example
    * // Remove the components from the message
    * interaction.update({
@@ -203,17 +222,17 @@ class InteractionResponses {
    *   .catch(console.error);
    */
   async update(options) {
-    if (this.deferred || this.replied) throw new Error('INTERACTION_ALREADY_REPLIED');
+    if (this.deferred || this.replied) throw new DiscordjsError(ErrorCodes.InteractionAlreadyReplied);
 
     let messagePayload;
     if (options instanceof MessagePayload) messagePayload = options;
     else messagePayload = MessagePayload.create(this, options);
 
-    const { data, files } = await messagePayload.resolveData().resolveFiles();
+    const { body: data, files } = await messagePayload.resolveBody().resolveFiles();
 
-    await this.client.api.interactions(this.id, this.token).callback.post({
-      data: {
-        type: InteractionResponseTypes.UPDATE_MESSAGE,
+    await this.client.rest.post(Routes.interactionCallback(this.id, this.token), {
+      body: {
+        type: InteractionResponseType.UpdateMessage,
         data,
       },
       files,
@@ -221,7 +240,56 @@ class InteractionResponses {
     });
     this.replied = true;
 
-    return options.fetchReply ? this.fetchReply() : undefined;
+    return options.fetchReply ? this.fetchReply() : new InteractionResponse(this, this.message.interaction?.id);
+  }
+
+  /**
+   * Shows a modal component
+   * @param {ModalBuilder|ModalComponentData|APIModalInteractionResponseCallbackData} modal The modal to show
+   * @returns {Promise<void>}
+   */
+  async showModal(modal) {
+    if (this.deferred || this.replied) throw new DiscordjsError(ErrorCodes.InteractionAlreadyReplied);
+    await this.client.rest.post(Routes.interactionCallback(this.id, this.token), {
+      body: {
+        type: InteractionResponseType.Modal,
+        data: isJSONEncodable(modal) ? modal.toJSON() : this.client.options.jsonTransformer(modal),
+      },
+      auth: false,
+    });
+    this.replied = true;
+  }
+
+  /**
+   * An object containing the same properties as {@link CollectorOptions}, but a few less:
+   * @typedef {Object} AwaitModalSubmitOptions
+   * @property {CollectorFilter} [filter] The filter applied to this collector
+   * @property {number} time Time in milliseconds to wait for an interaction before rejecting
+   */
+
+  /**
+   * Collects a single modal submit interaction that passes the filter.
+   * The Promise will reject if the time expires.
+   * @param {AwaitModalSubmitOptions} options Options to pass to the internal collector
+   * @returns {Promise<ModalSubmitInteraction>}
+   * @example
+   * // Collect a modal submit interaction
+   * const filter = (interaction) => interaction.customId === 'modal';
+   * interaction.awaitModalSubmit({ filter, time: 15_000 })
+   *   .then(interaction => console.log(`${interaction.customId} was submitted!`))
+   *   .catch(console.error);
+   */
+  awaitModalSubmit(options) {
+    if (typeof options.time !== 'number') throw new DiscordjsError(ErrorCodes.InvalidType, 'time', 'number');
+    const _options = { ...options, max: 1, interactionType: InteractionType.ModalSubmit };
+    return new Promise((resolve, reject) => {
+      const collector = new InteractionCollector(this.client, _options);
+      collector.once('end', (interactions, reason) => {
+        const interaction = interactions.first();
+        if (interaction) resolve(interaction);
+        else reject(new DiscordjsError(ErrorCodes.InteractionCollectorError, reason));
+      });
+    });
   }
 
   static applyToClass(structure, ignore = []) {
@@ -234,6 +302,8 @@ class InteractionResponses {
       'followUp',
       'deferUpdate',
       'update',
+      'showModal',
+      'awaitModalSubmit',
     ];
 
     for (const prop of props) {
