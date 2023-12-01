@@ -1,12 +1,11 @@
 const sd = require('silly-datetime'); //讀取silly-datetime模塊
 import { Window } from 'prismarine-windows';
-
+import net from 'net';
 import { logger } from "./logger"
 import { Config, Setting } from "../models/files";
 import { bot } from '../commands/main/bot';
 import EventEmitter from 'events';
 import { StoreLog } from '../commands/main/store_emerald';
-import { Embed } from 'discord.js';
 
 export let config:Config,Item:any,settings:Setting;
 
@@ -281,4 +280,28 @@ export function getDiscordStoreLogEmbed(storeLog:StoreLog,isEnd:boolean):any
     };
     
     return embed
+}
+
+/**
+ * 取的可用的port
+ * @param { number } startPort 起始port 
+ * @returns { Promise<number> } 可用的port
+ */
+export function getAvailablePort(startPort: number): Promise<number> {
+    const server = net.createServer();
+    server.unref();
+    return new Promise((resolve, reject) => {
+        server.on('error', () => {
+            // 如果當前 port 被占用，則嘗試下一個 port
+            server.close(() => {
+                getAvailablePort(startPort + 1).then(resolve).catch(reject);
+            });
+        });
+        server.listen(startPort, () => {
+            const { port } = server.address() as net.AddressInfo;
+            server.close(() => {
+                resolve(port);
+            });
+        });
+    });
 }

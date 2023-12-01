@@ -12,8 +12,8 @@
   "enable_pay_log":false,
   "transfer_interval":15,
 
-  "enable_trade_announcement": false,
-  "trade_announce_cycleTime": 605,
+  "enable_trade_announce": false,
+  "trade_announce_interval": 605,
   "enable_trade_content_cycle": true,
   "content_skip_count": 1,
   "trade_content": [
@@ -25,7 +25,7 @@
 
   "enable_reply_msg": false,
   "forward_ID": "請填入要接收轉發訊息的minecraft玩家ID(enable_reply_msg:true 就需要填寫)",
-  "clear_reply_id_delay_time": 600,
+  "clear_reply_id_interval": 600,
   "enable_auto_reply": false,
   "auto_reply_week": "1-7",
   "auto_reply_time": "00:00-08:00",

@@ -1,0 +1,635 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "測試API",
+    "description": "傳遞給websocket的資料測試區"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "預設網址"
+    }
+  ],
+  "paths": {
+    "/player": {
+      "get": {
+        "tags": [
+          "player"
+        ],
+        "summary": "取得玩家資料",
+        "description": "取得bot資訊",
+        "responses": {
+          "200": {
+            "description": "玩家資料",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Player"
+                }
+              },
+              "application/xml": {
+                "schema": {
+                  "$ref": "#/components/schemas/Player"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/message": {
+      "get": {
+        "tags": [
+          "message"
+        ],
+        "description": "取得聊天室訊息",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Player": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "object"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "ip": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "連線IP"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "version": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "版本"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "username": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家名稱"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "uuid": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家uuid"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "money": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家持有綠寶石"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              },
+              "coin": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家持有村民錠"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              },
+              "server": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家當前分流"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              },
+              "currentPlayers": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家當前分流人數"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              },
+              "targetedBlock": {
+                "xml": {
+                  "name": "block"
+                },
+                "$ref": "#/components/schemas/Block"
+              },
+              "position": {
+                "xml": {
+                  "name": "position"
+                },
+                "$ref": "#/components/schemas/Position"
+              },
+              "health": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家血量"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "food": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家飽食度"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "level": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家等級"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "points": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家經驗值"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "progress": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家經驗進度條"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "array"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "玩家物品清單"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "items": {
+                    "xml": {
+                      "name": "item"
+                    },
+                    "$ref": "#/components/schemas/Item"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "xml": {
+          "name": "Player"
+        }
+      },
+      "Position": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "object"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "X 座標"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "y": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Y 座標"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "z": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "number"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Z 座標"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "xml": {
+          "name": "Position"
+        }
+      },
+      "Item": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "object"
+          },
+          "description": {
+            "type": "string",
+            "example": "物品"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "物品類型ID"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "count": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "物品數量"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "物品元數據"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "nbt": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "NBT 資料"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              },
+              "stackId": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "堆疊 ID"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": true
+                  }
+                }
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "物品名稱"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "displayName": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "物品顯示名稱"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "stackSize": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "最大堆疊大小"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "slot": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "物品當前位置"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "xml": {
+          "name": "Item"
+        }
+      },
+      "Block": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "object"
+          },
+          "nullable": {
+            "type": "boolean",
+            "example": true
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "integer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "物品ID"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "name": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "example": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "物品名稱"
+                  },
+                  "nullable": {
+                    "type": "boolean",
+                    "example": false
+                  }
+                }
+              },
+              "position": {
+                "xml": {
+                  "name": "position"
+                },
+                "$ref": "#/components/schemas/Position"
+              }
+            }
+          }
+        },
+        "xml": {
+          "name": "Block"
+        }
+      }
+    }
+  }
+}

@@ -23,15 +23,15 @@ export interface Setting {
     readonly enable_pay_log:boolean;
     readonly transfer_interval:number;
 
-    readonly enable_trade_announcement: boolean;
-    readonly trade_announce_cycleTime: number;
+    readonly enable_trade_announce: boolean;
+    readonly trade_announce_interval: number;
     readonly enable_trade_content_cycle: boolean;
     readonly content_skip_count: number;
     readonly trade_content: string[][];
     
     readonly enable_reply_msg: boolean;
     readonly forward_ID: string;
-    readonly clear_reply_id_delay_time: number;
+    readonly clear_reply_id_interval: number;
     readonly enable_auto_reply: boolean;
     readonly auto_reply_week: string;
     readonly auto_reply_time: string;

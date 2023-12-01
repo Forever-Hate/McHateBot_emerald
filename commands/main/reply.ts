@@ -62,7 +62,7 @@ export class ReplyController
                 if (settings.enable_discord_bot) {
                     discordManager.modifyReplyId("");
                 }
-            }, settings.clear_reply_id_delay_time * 1000);
+            }, settings.clear_reply_id_interval * 1000);
 
             if (settings.enable_discord_bot && settings.directly_send_msg_to_dc) 
             {

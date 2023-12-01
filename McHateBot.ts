@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
 
-import login, { bot } from "./commands/main/bot";
+import login, { bot, setIsOnline } from "./commands/main/bot";
 import setLocalization, { localizer } from "./utils/localization";
 import setLogger, { logger } from "./utils/logger";
 import setDiscordManager, { discordManager } from './commands/communicate/dc';
@@ -12,7 +12,7 @@ import setReplyManager, { replyManager } from './commands/main/reply';
 import { RestartNotifier, config, getConfig, getSettings, settings } from './utils/util';
 import setStoreEmeraldManager, { storeEmeraldManager } from './commands/main/store_emerald';
 import setAfkManager, { afkManager } from './commands/main/afk';
-import { Vec3 } from 'vec3';
+import { Route, WebSocketClient,websocketClient } from './commands/websocket/websocket';
 
 
 
@@ -24,7 +24,6 @@ try {
     setLogger();
     setLocalization();
     const sd = require('silly-datetime');//讀取silly-datetime模塊
-    const fs = require("fs");
     setDiscordManager();
     setDiscardItemer();
     setStoreEmeraldManager();
@@ -41,6 +40,9 @@ try {
         output: process.stdout,
         terminal: false
     });
+    
+    WebSocketClient.init();
+    websocketClient!.refreshData()
     /**
      * 顯示歡迎旗幟在console
      */
@@ -62,8 +64,8 @@ try {
         bot.once('spawn', () => {   //bot啟動時
             logger.i(`${localizer.format("LOADING_DONE")}`)
             showWelcomeBanner()
-
-            if (settings.enable_trade_announcement) //宣傳
+            setIsOnline(true);
+            if (settings.enable_trade_announce) //宣傳
             {
                 announcer.startAnnounce()
             }
@@ -84,6 +86,7 @@ try {
             else 
             {
                 console.log(jsonMsg.toAnsi());
+                websocketClient!.send(Route.message,jsonMsg.toHTML())
             }
 
             if (jsonMsg.toString().startsWith(`[系統] `) &&jsonMsg.toString().toLowerCase().includes(`想要你傳送到 該玩家 的位置`) ||jsonMsg.toString().toLowerCase().includes(`想要傳送到 你 的位置`)) 
@@ -231,15 +234,12 @@ try {
                 }
                 return
             }
-
-            //成功運作
             if(new RegExp(/^\[系統\]\s:\s第\d{1,3}分流 伺服器將進行短暫重啟/).test(jsonMsg.toString()))
             {
                 logger.d("檢測到分流重啟訊息")
                 restartNotifier.getRestartMessage(jsonMsg.toString());
                 return
             }
-            //成功運作
             if(new RegExp(/^\[系統\] 讀取人物成功。/).test(jsonMsg.toString()))
             {
                 logger.d("檢測到分流重啟完成訊息")
@@ -247,19 +247,22 @@ try {
                 return
             }
         })
+
         bot.once('kicked', (reason) => {
             let time1 = sd.format(new Date(), 'YYYY/MM/DD HH:mm:ss'); //獲得系統時間
             console.log(`[資訊] 客戶端被伺服器踢出 @${time1}   \n造成的原因:${reason}`)
         });
+
         //斷線自動重連
         bot.once('end', () => {
             let time1 = sd.format(new Date(), 'YYYY/MM/DD HH:mm:ss'); //獲得系統時間
             console.log(`[資訊] 客戶端與伺服器斷線 ，10秒後將會自動重新連線...\n@${time1}`)
-            if (settings.enable_trade_announcement) 
+            if (settings.enable_trade_announce) 
             {
                 announcer.stopAnnounceInterval();
             }
             bot.removeAllListeners()
+            setIsOnline(false);
             setTimeout(function () {
                 connect();
             }, 10000)
