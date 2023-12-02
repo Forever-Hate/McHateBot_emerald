@@ -65,6 +65,12 @@ try {
             logger.i(`${localizer.format("LOADING_DONE")}`)
             showWelcomeBanner()
             setIsOnline(true);
+            //從小黑窗中發送訊息
+            rl.on('line', async function (line:any) 
+            {
+                bot.chat(line)
+            })
+
             if (settings.enable_trade_announce) //宣傳
             {
                 announcer.startAnnounce()
