@@ -1,10 +1,16 @@
-# McHateBot_emerald
+# 存綠寶石Bot(廢土伺服器專用)
 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="nofollow"><img src="https://camo.githubusercontent.com/72437363a2c150e50c5c090c5ec0dfde31ce3a28c8a092f638509882b56ceb4e/68747470733a2f2f692e6372656174697665636f6d6d6f6e732e6f72672f6c2f62792d6e632d73612f342e302f38307831352e706e67" alt="CC" data-canonical-src="https://i.creativecommons.org/l/by-nc-sa/4.0/80x15.png" style="max-width: 100%;"></a><br>
-**專門為廢土伺服器所製作存綠寶石Bot**<br>
+# 介紹
+此存綠bot為廢土伺服器專用，如果拿到其他的伺服器做使用，可能會出現無法預期的情況<br>
 
-[**點我前往下載McHateBot_emerald**](https://github.com/Forever-Hate/McHateBot_emerald/releases)<br>
-[**點我加入DC伺服器**](https://discord.gg/kXwBA4tFKb)
-## 主要特色、功能
+下載bot: https://github.com/Forever-Hate/McHateBot_emerald/release <br>
+
+使用說明 & wiki: https://github.com/Forever-Hate/McHateBot_emerald/wiki
+
+查看更多: [突襲](https://github.com/Forever-Hate/McHateBot_raid)、[UI](https://github.com/Forever-Hate/McHateBot_UI)
+
+Discord 社群: https://discord.gg/kXwBA4tFKb
+# 主要特色、功能
 ```  
 1.可以不用開遊戲輸入指令&聊天
 2.透過私訊Bot來執行指令(須設定白名單)  
@@ -16,10 +22,6 @@
 8.支援多點卸盒
 9.支援Discord Slash Commands
 ```
-## 授權
+# 授權
 本著作採用創用CC[姓名標示-非商業性-相同方式分享 4.0 國際 (CC BY-NC-SA 4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh_TW)授權條款授權<br>
 此bot是以[McSngbot](https://github.com/SiongSng/McSngbot)加以製作而成
-
-**如不會使用，歡迎直接在DC群問或私訊我DC:I-love-minecraft#2437**<br>
-**如有想新增的功能 or Bug，歡迎使用[issue](https://github.com/Forever-Hate/McHateBot_emerald/issues)**<br>
-**使用說明 & wiki:[維基](https://github.com/Forever-Hate/McHateBot_emerald/wiki)**
