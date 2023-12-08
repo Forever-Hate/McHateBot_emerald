@@ -13,7 +13,8 @@ import { RestartNotifier, config, getConfig, getSettings, settings } from './uti
 import setStoreEmeraldManager, { storeEmeraldManager } from './commands/main/store_emerald';
 import setAfkManager, { afkManager } from './commands/main/afk';
 import { Route, WebSocketClient,websocketClient } from './commands/websocket/websocket';
-
+import * as mineflayer from 'mineflayer';
+var tpsPlugin = require('mineflayer-tps')(mineflayer);
 
 
 try {
@@ -61,6 +62,7 @@ try {
         const messge_regex = new RegExp(/\[(.*?) -> 您\] (.*)/)
         login();
 
+        bot.loadPlugin(tpsPlugin); //載入tps插件
         bot.once('spawn', () => {   //bot啟動時
             logger.i(`${localizer.format("LOADING_DONE")}`)
             showWelcomeBanner()
@@ -220,6 +222,11 @@ try {
                             // break
                             break
                         }
+                        case "tps":
+                        {
+                            bot.chat(`/m ${playerId} ${bot.getTps()}`)
+                            break;
+                        }
                         case "exit": //關閉bot
                             bot.chat(`/m ${playerId} ${localizer.format("SHUTDOWN")}`)
                             console.log(`Shutdown in 10 seconds`)
@@ -269,6 +276,10 @@ try {
             }
             bot.removeAllListeners()
             setIsOnline(false);
+            if(rl.listeners('line').length > 0)
+            {
+                rl.removeListener('line', rl.listeners('line')[0]); //移除事件監聽(此事件不會自動移除)
+            }
             setTimeout(function () {
                 connect();
             }, 10000)

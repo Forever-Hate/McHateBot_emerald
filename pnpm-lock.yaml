@@ -20,6 +20,9 @@ dependencies:
   mineflayer:
     specifier: ^4.14.0
     version: 4.14.0
+  mineflayer-tps:
+    specifier: ^1.0.1
+    version: 1.0.1
   prismarine-block:
     specifier: ^1.17.1
     version: 1.17.1
@@ -1118,6 +1121,10 @@ packages:
     transitivePeerDependencies:
       - encoding
       - supports-color
+    dev: false
+
+  /mineflayer-tps@1.0.1:
+    resolution: {integrity: sha512-/o9CGE+LtFo6JTFdLQHgh0JGEEMthQTpqp/zqvT0OIEv+G4xx1luzVBgZnnfQuOj/zDiMmyEj5LK72+5uUYVqw==}
     dev: false
 
   /mineflayer@4.14.0:

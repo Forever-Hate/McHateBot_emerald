@@ -1,6 +1,6 @@
 {
   "name": "mchatebot_emerald",
-  "version": "1.22",
+  "version": "1.23",
   "author": "I-love-minecraft#2437",
   "main": "McHateBot.ts",
   "scripts": {
@@ -16,6 +16,7 @@
     "prismarine-windows":"^2.8.0",
     "prismarine-block":"^1.17.1",
     "mineflayer": "^4.14.0",
+    "mineflayer-tps": "^1.0.1",
     "vec3":"^0.1.8",
     "silly-datetime": "^0.1.2",
     "ws": "^8.14.2"
