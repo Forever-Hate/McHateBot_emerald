@@ -6,6 +6,7 @@ import { logger } from '../../utils/logger';
 import { bot, isOnline } from '../main/bot';
 import path from 'path';
 import { config, getAvailablePort, settings } from '../../utils/util';
+import {financer} from "../main/finance";
 
 export let websocketClient:WebSocketClient | null = null
 
@@ -107,17 +108,44 @@ export class WebSocketClient
           },
           description: "玩家資料" } */
       (req, res) => {
+        const split =  bot.tablist.header.toString().split("\n")
+        const MoneyRegex = new RegExp("綠寶石餘額 : ([\\s\\S]+) \\/ 村民錠餘額 : ([\\s\\S]+) \\/ 村民錠價格 : 每個約 ([\\s\\S]+) 綠").exec(split.toString().trim())
+        const CurrenServer = new RegExp(`所處位置 : 分流([\\s\\S]+)-([\\s\\S]+) -([\\s\\S]+) -座標 : ([\\s\\S]+)`).exec(split.toString().trim())
+        const CurrentPlayers = new RegExp(`當前分流人數 : (\\S+)`).exec(split.toString().trim())
+
+        let BotStates = {
+          Money:"",
+          VCoin:"",
+          CurrenServer:0,
+          CurrentPlayers:0,
+        }
+
+        if (MoneyRegex){
+          let Money =  parseInt(MoneyRegex[1].replaceAll(",",""))
+          financer.balance = Money
+          BotStates.Money = MoneyRegex[1]
+          BotStates.VCoin = MoneyRegex[2]
+        }
+
+        if (CurrenServer){
+          BotStates.CurrenServer = parseInt(CurrenServer[1])
+        }
+
+        if (CurrentPlayers){
+          BotStates.CurrentPlayers = parseInt(CurrentPlayers[1])
+        }
+
         const block = bot.blockAtCursor()
-        res.send({
+        this.send(Route.player,JSON.stringify({
           "ip":config.ip,
           "version":config.version,
           "username":bot.username,
           "uuid":bot.player.uuid,
           "tps":bot.getTps(),
-          "money":bot.tablist.header.extra && bot.tablist.header.extra[44] ? bot.tablist.header.extra[44].json['text'].trim():null,
-          "coin":bot.tablist.header.extra && bot.tablist.header.extra[48] ? bot.tablist.header.extra[48].json['text'].trim():null,
-          "server":bot.tablist.header.extra && bot.tablist.header.extra[54] ? parseInt(bot.tablist.header.extra[54].json['text'].slice(2)):null,
-          "currentPlayers":bot.tablist.header.extra && bot.tablist.header.extra[65] ? parseInt(bot.tablist.header.extra[65].json['text']) : null,
+          "money":BotStates.Money,
+          "coin":BotStates.VCoin,
+          "server":BotStates.CurrenServer,
+          "currentPlayers":BotStates.CurrentPlayers,
           "targetedBlock":block ? {
             "type":block.type,
             "name":block.name,
@@ -130,7 +158,7 @@ export class WebSocketClient
           "points":bot.experience.points,
           "progress":bot.experience.progress,
           "items":bot.inventory.items(),
-        })
+        }))
     });
 
     //聊天室訊息路由(API)
@@ -183,6 +211,33 @@ export class WebSocketClient
     this.playerInterval = setInterval(()=>{
       if(isOnline)
       {
+        const split =  bot.tablist.header.toString().split("\n")
+        const MoneyRegex = new RegExp("綠寶石餘額 : ([\\s\\S]+) \\/ 村民錠餘額 : ([\\s\\S]+) \\/ 村民錠價格 : 每個約 ([\\s\\S]+) 綠").exec(split.toString().trim())
+        const CurrenServer = new RegExp(`所處位置 : 分流([\\s\\S]+)-([\\s\\S]+) -([\\s\\S]+) -座標 : ([\\s\\S]+)`).exec(split.toString().trim())
+        const CurrentPlayers = new RegExp(`當前分流人數 : (\\S+)`).exec(split.toString().trim())
+
+        let BotStates = {
+          Money:"",
+          VCoin:"",
+          CurrenServer:0,
+          CurrentPlayers:0,
+        }
+
+        if (MoneyRegex){
+          let Money =  parseInt(MoneyRegex[1].replaceAll(",",""))
+          financer.balance = Money
+          BotStates.Money = MoneyRegex[1]
+          BotStates.VCoin = MoneyRegex[2]
+        }
+
+        if (CurrenServer){
+          BotStates.CurrenServer = parseInt(CurrenServer[1])
+        }
+
+        if (CurrentPlayers){
+          BotStates.CurrentPlayers = parseInt(CurrentPlayers[1])
+        }
+
         const block = bot.blockAtCursor()
         this.send(Route.player,JSON.stringify({
           "ip":config.ip,
@@ -190,10 +245,10 @@ export class WebSocketClient
           "username":bot.username,
           "uuid":bot.player.uuid,
           "tps":bot.getTps(),
-          "money":bot.tablist.header.extra && bot.tablist.header.extra[44] ? bot.tablist.header.extra[44].json['text'].trim():null,
-          "coin":bot.tablist.header.extra && bot.tablist.header.extra[48] ? bot.tablist.header.extra[48].json['text'].trim():null,
-          "server":bot.tablist.header.extra && bot.tablist.header.extra[54] ? parseInt(bot.tablist.header.extra[54].json['text'].slice(2)):null,
-          "currentPlayers":bot.tablist.header.extra && bot.tablist.header.extra[65] ? parseInt(bot.tablist.header.extra[65].json['text']) : null,
+          "money":BotStates.Money,
+          "coin":BotStates.VCoin,
+          "server":BotStates.CurrenServer,
+          "currentPlayers":BotStates.CurrentPlayers,
           "targetedBlock":block ? {
             "type":block.type,
             "name":block.name,
