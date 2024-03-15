@@ -1,4 +1,4 @@
-import { Client, Partials,IntentsBitField, TextChannel, User, Collection, Events, REST, Routes, Embed } from 'discord.js';
+import { Client as _Client, Partials,IntentsBitField, TextChannel, User, Collection, Events, REST, Routes, Embed } from 'discord.js';
 import { localizer } from '../../utils/localization';
 import { logger } from '../../utils/logger';
 import fs from 'fs';
@@ -6,9 +6,12 @@ import path from 'path';
 import { bot } from '../main/bot';
 import { settings } from '../../utils/util';
 
+
+class Client extends _Client {
+    commands = new Collection<string, any>();
+}
 const intents = new IntentsBitField(['Guilds', 'GuildMessages', 'DirectMessages']);
 const client = new Client({ intents: intents, partials: [Partials.Channel] });
-client.commands = new Collection();
 
 class DiscordBotException extends Error 
 {
@@ -167,7 +170,7 @@ export class DiscordManager
                             return
                         }
 
-                        const command = interaction.client.commands.get(interaction.commandName);
+                        const command = (interaction.client as Client).commands.get(interaction.commandName);
                  
                         if (!command) {
                             logger.e(`未找到指令 ${interaction.commandName} `);
@@ -186,7 +189,7 @@ export class DiscordManager
                         }
                     }
                     else if (interaction.isAutocomplete()) {
-                        const command = interaction.client.commands.get(interaction.commandName);
+                        const command = (interaction.client as Client).commands.get(interaction.commandName);
                 
                         if (!command) {
                             logger.e(`未找到指令 ${interaction.commandName} `);

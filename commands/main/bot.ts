@@ -1,9 +1,10 @@
-import { Bot, BotOptions } from "mineflayer";
+import { Bot as _Bot, BotOptions } from "mineflayer";
 import { Config } from "../../models/files";
 import { logger } from "../../utils/logger";
 
 import mineflayer from 'mineflayer';  //讀取mineflayer模塊
 
+type Bot = _Bot & { getTps(): number };
 export let bot:Bot;
 export let isOnline:boolean = false;
 /**
@@ -29,7 +30,7 @@ export default function login()
     }
     try
     {
-        bot = mineflayer.createBot(loginOpts)
+        bot = mineflayer.createBot(loginOpts) as Bot;
     }
     catch(e:any)
     {

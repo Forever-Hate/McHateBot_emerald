@@ -1,5 +1,9 @@
 # 存綠寶石Bot(廢土伺服器專用)
 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="nofollow"><img src="https://camo.githubusercontent.com/72437363a2c150e50c5c090c5ec0dfde31ce3a28c8a092f638509882b56ceb4e/68747470733a2f2f692e6372656174697665636f6d6d6f6e732e6f72672f6c2f62792d6e632d73612f342e302f38307831352e706e67" alt="CC" data-canonical-src="https://i.creativecommons.org/l/by-nc-sa/4.0/80x15.png" style="max-width: 100%;"></a><br>
+
+# 注意
+此分支為開發分支，可能會有一些未完成的功能，以及未完善的文檔。
+
 # 介紹
 此存綠bot為廢土伺服器專用，如果拿到其他的伺服器做使用，可能會出現無法預期的情況<br>
 
@@ -10,6 +14,7 @@
 查看更多: [突襲](https://github.com/Forever-Hate/McHateBot_raid)、[UI](https://github.com/Forever-Hate/McHateBot_UI)
 
 Discord 社群: https://discord.gg/kXwBA4tFKb
+
 # 主要特色、功能
 ```  
 1.可以不用開遊戲輸入指令&聊天
