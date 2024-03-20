@@ -305,3 +305,12 @@ export function getAvailablePort(startPort: number): Promise<number> {
         });
     });
 }
+
+/**
+ * 替換所有換行符號 (U+000A, U+000D) 為空格
+ * @param { string } text 原始字串
+ * @returns { string } 處理過的字串
+ */
+export function replaceNewlines(text: string): string {
+    return text.replace(/(?:\r\n|\r|\n)/g, ' ');
+}
