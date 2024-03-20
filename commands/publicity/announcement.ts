@@ -1,6 +1,6 @@
 import { localizer } from "../../utils/localization";
 import { logger } from "../../utils/logger";
-import { removeCarriageReturns, settings } from "../../utils/util";
+import { replaceNewlines, settings } from "../../utils/util";
 import { bot } from "../main/bot";
 
 export let announcer:Announcer;
@@ -24,7 +24,7 @@ export class Announcer
         //將每一句間隔0.5秒發送出去
         this.trade_content.forEach((c, index) => {
             setTimeout(()=>{
-            bot.chat(removeCarriageReturns(`${c}`));
+            bot.chat(replaceNewlines(`${c}`));
             }, 500 * (index + 1));
         });
 

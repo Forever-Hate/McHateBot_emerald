@@ -307,10 +307,10 @@ export function getAvailablePort(startPort: number): Promise<number> {
 }
 
 /**
- * 去除所有 CR 符號 (U+000D)
+ * 替換所有換行符號 (U+000A, U+000D) 為空格
  * @param { string } text 原始字串
  * @returns { string } 處理過的字串
  */
-export function removeCarriageReturns(text: string): string {
-    return text.replace(/\r/g, '');
+export function replaceNewlines(text: string): string {
+    return text.replace(/(?:\r\n|\r|\n)/g, ' ');
 }
