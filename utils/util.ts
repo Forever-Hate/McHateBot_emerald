@@ -305,3 +305,12 @@ export function getAvailablePort(startPort: number): Promise<number> {
         });
     });
 }
+
+/**
+ * 去除所有 CR 符號 (U+000D)
+ * @param { string } text 原始字串
+ * @returns { string } 處理過的字串
+ */
+export function removeCarriageReturns(text: string): string {
+    return text.replace(/\r/g, '');
+}
