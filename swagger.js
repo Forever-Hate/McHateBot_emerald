@@ -1,4 +1,6 @@
-const swaggerAutogen = require('swagger-autogen')({openapi: '3.0.0'});
+import swaggerAutogenFactory from 'swagger-autogen';
+
+const swaggerAutogen = swaggerAutogenFactory({openapi: '3.0.0'});
 
 const doc = {
   info: {

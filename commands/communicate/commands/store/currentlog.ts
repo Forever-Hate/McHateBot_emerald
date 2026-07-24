@@ -1,8 +1,8 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import { logger } from '../../../../utils/logger';
-import { storeEmeraldManager } from '../../../main/store_emerald';
-import { localizer } from '../../../../utils/localization';
-import { getDiscordStoreLogEmbed, settings } from '../../../../utils/util';
+import { logger } from '../../../../utils/logger.ts';
+import { storeEmeraldManager } from '../../../main/store_emerald.ts';
+import { localizer } from '../../../../utils/localization.ts';
+import { getDiscordStoreLogEmbed, settings } from '../../../../utils/util.ts';
 
 module.exports = {
 	data: new SlashCommandBuilder()

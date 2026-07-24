@@ -1,6 +1,6 @@
-import { Item } from 'prismarine-item';
-import { bot } from '../commands/main/bot';
-import { logger } from './logger';
+import type { Item } from 'prismarine-item';
+import { bot } from '../commands/main/bot.ts';
+import { logger } from './logger.ts';
 
 export let discardItemer:DiscardItemer;
 

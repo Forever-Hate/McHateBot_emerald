@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import { logger } from '../../../../utils/logger';
-import { announcer } from '../../../publicity/announcement';
+import { logger } from '../../../../utils/logger.ts';
+import { announcer } from '../../../publicity/announcement.ts';
 
 module.exports = {
 	data: new SlashCommandBuilder()

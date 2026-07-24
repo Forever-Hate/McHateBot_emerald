@@ -1,10 +1,11 @@
 import { Client, Partials,IntentsBitField, TextChannel, User, Collection, Events, REST, Routes, Embed } from 'discord.js';
-import { localizer } from '../../utils/localization';
-import { logger } from '../../utils/logger';
+import { localizer } from '../../utils/localization.ts';
+import { logger } from '../../utils/logger.ts';
 import fs from 'fs';
 import path from 'path';
-import { bot } from '../main/bot';
-import { settings } from '../../utils/util';
+import { pathToFileURL } from 'node:url';
+import { bot } from '../main/bot.ts';
+import { settings } from '../../utils/util.ts';
 
 const intents = new IntentsBitField(['Guilds', 'GuildMessages', 'DirectMessages']);
 const client = new Client({ intents: intents, partials: [Partials.Channel] });
@@ -188,7 +189,7 @@ export class DiscordManager
                     else if (interaction.isAutocomplete()) {
                         const command = interaction.client.commands.get(interaction.commandName);
                 
-                        if (!command) {
+                        if (!command || !command.autocomplete) {
                             logger.e(`未找到指令 ${interaction.commandName} `);
                             return;
                         }
@@ -242,7 +243,7 @@ export class DiscordManager
         //指令暫存列表
         const commands = [];
         //抓取所有指令的根資料夾
-        const foldersPath = path.join(__dirname, 'commands');
+        const foldersPath = path.join(process.cwd(), 'commands', 'communicate', 'commands');
         const commandFolders = fs.readdirSync(foldersPath);
         //將指令從資料夾中個別讀取，並判斷是否符合格式
         for (const folder of commandFolders) 
@@ -252,7 +253,7 @@ export class DiscordManager
             for (const file of commandFiles) 
             {
                 const filePath = path.join(commandsPath, file);
-                const command = require(filePath);
+                const command = await import(pathToFileURL(filePath).href);
                 if ('data' in command && 'execute' in command) 
                 {
                     //將指令存在一個暫存

@@ -1,7 +1,7 @@
-import { localizer } from "../../utils/localization";
-import { logger } from "../../utils/logger";
-import { settings } from "../../utils/util";
-import { bot } from "../main/bot";
+import { localizer } from "../../utils/localization.ts";
+import { logger } from "../../utils/logger.ts";
+import { settings } from "../../utils/util.ts";
+import { bot } from "../main/bot.ts";
 
 export let announcer:Announcer;
 

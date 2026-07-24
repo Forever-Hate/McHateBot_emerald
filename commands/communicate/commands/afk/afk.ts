@@ -1,8 +1,6 @@
-import { AutocompleteInteraction, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import { logger } from '../../../../utils/logger';
-import { storeEmeraldManager } from '../../../main/store_emerald';
-import { settings } from '../../../../utils/util';
-import { afkManager } from '../../../main/afk';
+import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { logger } from '../../../../utils/logger.ts';
+import { afkManager } from '../../../main/afk.ts';
 
 module.exports = {
 	data: new SlashCommandBuilder()

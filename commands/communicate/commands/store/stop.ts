@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import { logger } from '../../../../utils/logger';
-import { storeEmeraldManager } from '../../../main/store_emerald';
+import { logger } from '../../../../utils/logger.ts';
+import { storeEmeraldManager } from '../../../main/store_emerald.ts';
 
 module.exports = {
 	data: new SlashCommandBuilder()

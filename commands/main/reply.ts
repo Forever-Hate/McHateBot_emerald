@@ -1,8 +1,8 @@
-import { localizer } from '../../utils/localization';
-import { logger } from '../../utils/logger';
-import { discordManager } from '../communicate/dc';
-import { bot } from './bot';
-import { settings } from '../../utils/util';
+import { localizer } from '../../utils/localization.ts';
+import { logger } from '../../utils/logger.ts';
+import { discordManager } from '../communicate/dc.ts';
+import { bot } from './bot.ts';
+import { settings } from '../../utils/util.ts';
 
 export let replyManager:ReplyController;
 

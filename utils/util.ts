@@ -1,11 +1,11 @@
-const sd = require('silly-datetime'); //讀取silly-datetime模塊
-import { Window } from 'prismarine-windows';
+import type { Window } from 'prismarine-windows';
 import net from 'net';
-import { logger } from "./logger"
-import { Config, Setting } from "../models/files";
-import { bot } from '../commands/main/bot';
+import fs from 'node:fs';
+import { logger } from "./logger.ts"
+import type { Config, Setting } from "../models/files.ts";
+import { bot } from '../commands/main/bot.ts';
 import EventEmitter from 'events';
-import { StoreLog } from '../commands/main/store_emerald';
+import { StoreLog } from '../commands/main/store_emerald.ts';
 
 export let config:Config,Item:any,settings:Setting;
 
@@ -39,10 +39,12 @@ export class RestartNotifier extends EventEmitter {
  * 1. 家
  * 2. 公傳點
  */
-export const enum LocationType {
-    Home,
-    Warp
-}
+export const LocationType = {
+    Home: 0,
+    Warp: 1,
+} as const;
+
+export type LocationType = typeof LocationType[keyof typeof LocationType];
 
 /**
  * 取得輸入指令後彈出的視窗實例
@@ -116,8 +118,7 @@ export function formatTime(totalTime: number): string
  */
 export function getSettings()
 {
-    delete require.cache[require.resolve(`${process.cwd()}/settings.json`)]; //清除暫存
-    settings = require(`${process.cwd()}/settings.json`) //讀取設定檔案
+    settings = JSON.parse(fs.readFileSync(`${process.cwd()}/settings.json`, 'utf8')) as Setting;
 }
 
 /**
@@ -125,8 +126,7 @@ export function getSettings()
  */
 export function getConfig()
 {
-    delete require.cache[require.resolve(`${process.cwd()}/config.json`)]; //清除暫存
-    config = require(`${process.cwd()}/config.json`)  //讀取config檔案
+    config = JSON.parse(fs.readFileSync(`${process.cwd()}/config.json`, 'utf8')) as Config;
 }
 
 /**

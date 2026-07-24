@@ -1,20 +1,22 @@
-import * as WebSocket from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import * as http from 'http';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { logger } from '../../utils/logger';
-import { bot, isOnline } from '../main/bot';
+import { logger } from '../../utils/logger.ts';
+import { bot, isOnline } from '../main/bot.ts';
 import path from 'path';
-import { config, getAvailablePort, settings } from '../../utils/util';
-import {financer} from "../main/finance";
+import fs from 'node:fs';
+import { config, getAvailablePort } from '../../utils/util.ts';
+import {financer} from "../main/finance.ts";
 
 export let websocketClient:WebSocketClient | null = null
 
-export const enum Route
-{
-  message = "/message",
-  player = "/player"
-}
+export const Route = {
+  message: "/message",
+  player: "/player",
+} as const;
+
+export type Route = typeof Route[keyof typeof Route];
 
 export class WebSocketClient
 {
@@ -24,7 +26,7 @@ export class WebSocketClient
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('WebSocket Server');
   });
-  wss = new WebSocket.Server({ noServer:true });
+  wss = new WebSocketServer({ noServer:true });
   
   playerInterval:NodeJS.Timeout | null = null
 
@@ -141,7 +143,6 @@ export class WebSocketClient
           "version":config.version,
           "username":bot.username,
           "uuid":bot.player.uuid,
-          "tps":bot.getTps(),
           "money":BotStates.Money,
           "coin":BotStates.VCoin,
           "server":BotStates.CurrenServer,
@@ -170,13 +171,13 @@ export class WebSocketClient
     });
 
     //swagger路由
-    router.use('/api-docs', process.env.DEVELOP == 'true' ? swaggerUi.serve :express.static(path.join(__dirname,'../../dist')));
+    router.use('/api-docs', process.env.DEVELOP == 'true' ? swaggerUi.serve :express.static(path.join(process.cwd(),'dist')));
     
     if(process.env.DEVELOP == 'true')
     {
       router.get('/api-docs', 
         // #swagger.ignore = true
-        swaggerUi.setup(require(`${process.cwd()}/swagger-output.json`))
+        swaggerUi.setup(JSON.parse(fs.readFileSync(`${process.cwd()}/swagger-output.json`, 'utf8')))
       );
     }
 
@@ -244,7 +245,6 @@ export class WebSocketClient
           "version":config.version,
           "username":bot.username,
           "uuid":bot.player.uuid,
-          "tps":bot.getTps(),
           "money":BotStates.Money,
           "coin":BotStates.VCoin,
           "server":BotStates.CurrenServer,

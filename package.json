@@ -1,29 +1,31 @@
 {
   "name": "mchatebot_emerald",
-  "version": "1.24",
+  "version": "2.0",
+  "type": "module",
   "author": "I-love-minecraft#2437",
   "main": "McHateBot.ts",
   "scripts": {
     "build": "cmd /C scripts\\build.bat",
+    "start": "node McHateBot.ts",
     "swagger": "node ./swagger.js"
   },
   "dependencies": {
-    "discord.js": "^14.13.0",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "minecraft-data": "^3.44.0",
-    "prismarine-item":"^1.14.0",
-    "prismarine-windows":"^2.8.0",
-    "prismarine-block":"^1.17.1",
-    "mineflayer": "^4.14.0",
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "luxon": "^3.7.2",
+    "minecraft-data": "^3.111.0",
+    "mineflayer": "^4.37.1",
     "mineflayer-tps": "^1.0.1",
-    "vec3":"^0.1.8",
-    "silly-datetime": "^0.1.2",
-    "ws": "^8.14.2"
+    "prismarine-block": "^1.23.0",
+    "prismarine-item": "^1.18.0",
+    "prismarine-windows": "^2.10.0",
+    "vec3": "^0.2.0",
+    "ws": "^8.21.1"
   },
   "bin": "index.js",
   "engines": {
-    "node": ">= 18"
+    "node": ">= 24"
   },
   "pkg": {
     "assets": [
@@ -35,15 +37,18 @@
     "outputPath": "./exe"
   },
   "devDependencies": {
-    "@types/express": "^4.17.18",
-    "@types/node": "^20.6.3",
-    "@types/swagger-ui-dist": "^3.30.3",
-    "@types/swagger-ui-express": "^4.1.4",
-    "@types/ws": "^8.5.6",
-    "cpy-cli": "^5.0.0",
-    "swagger-autogen": "^2.23.6",
-    "swagger-ui-express": "^5.0.0",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.2.2"
+    "@types/express": "^5.0.6",
+    "@types/luxon": "^3.7.2",
+    "@types/node": "^26.1.1",
+    "@types/swagger-ui-dist": "^3.30.6",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@types/ws": "^8.18.1",
+    "@yao-pkg/pkg": "^6.21.0",
+    "cpy-cli": "^7.0.0",
+    "swagger-autogen": "^2.23.7",
+    "swagger-ui-express": "^5.0.1",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
   }
 }

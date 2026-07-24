@@ -1,8 +1,8 @@
-import { localizer } from "../../utils/localization";
-import { logger } from "../../utils/logger";
-import { LocationType, findReachableHomeLocation, findReachableWarpLocation, getValidLocationType, settings } from "../../utils/util";
-import { discordManager } from "../communicate/dc";
-import { bot } from "./bot";
+import { localizer } from "../../utils/localization.ts";
+import { logger } from "../../utils/logger.ts";
+import { LocationType, findReachableHomeLocation, findReachableWarpLocation, getValidLocationType, settings } from "../../utils/util.ts";
+import { discordManager } from "../communicate/dc.ts";
+import { bot } from "./bot.ts";
 
 export let afkManager:AfkManager;
 

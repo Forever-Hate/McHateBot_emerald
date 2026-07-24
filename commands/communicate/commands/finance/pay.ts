@@ -1,8 +1,8 @@
 import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
-import { logger } from '../../../../utils/logger';
-import { localizer } from '../../../../utils/localization';
-import { financer } from '../../../main/finance';
+import { logger } from '../../../../utils/logger.ts';
+import { localizer } from '../../../../utils/localization.ts';
+import { financer } from '../../../main/finance.ts';
 
 
 module.exports = {

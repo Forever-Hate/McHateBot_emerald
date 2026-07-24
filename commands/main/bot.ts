@@ -1,8 +1,8 @@
-import { Bot, BotOptions } from "mineflayer";
-import { Config } from "../../models/files";
-import { logger } from "../../utils/logger";
-
-import mineflayer from 'mineflayer';  //讀取mineflayer模塊
+import { createBot } from "mineflayer";
+import type { Bot, BotOptions } from "mineflayer";
+import fs from 'node:fs';
+import type { Config } from "../../models/files.ts";
+import { logger } from "../../utils/logger.ts";
 
 export let bot:Bot;
 export let isOnline:boolean = false;
@@ -12,7 +12,7 @@ export let isOnline:boolean = false;
 export default function login()
 {
     logger.i("進入login，登入bot")
-    const config:Config = require(`${process.cwd()}/config.json`)  //讀取config檔案
+    const config:Config = JSON.parse(fs.readFileSync(`${process.cwd()}/config.json`, 'utf8')) as Config;
     const loginOpts:BotOptions = {  //登入資訊
         host: config.ip,  //伺服器ip
         port: config.port >= 0 ? config.port : undefined,  //伺服器port(預設25565)
@@ -29,12 +29,13 @@ export default function login()
     }
     try
     {
-        bot = mineflayer.createBot(loginOpts)
+        bot = createBot(loginOpts)
     }
     catch(e:any)
     {
         logger.e(e);
         logger.writeErrorLog(e.toString());
+        throw e;
     }
     
 }

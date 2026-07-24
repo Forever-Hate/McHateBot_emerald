@@ -1,7 +1,7 @@
 import fs from "fs"; //讀取fs模塊
-import { settings } from "./util";
-import { StoreLog } from "../commands/main/store_emerald";
-const sd = require('silly-datetime'); //讀取silly-datetime模塊
+import { settings } from "./util.ts";
+import { StoreLog } from "../commands/main/store_emerald.ts";
+import { DateTime } from "luxon";
 export let logger:Log
 
 export class Log 
@@ -14,7 +14,7 @@ export class Log
   writeErrorLog(e:any):void
   {
     this.i("進入writeErrorLog，撰寫ErrorLog");
-    const time = sd.format(new Date(), 'YYYY-MM-DD-HH-mm-ss');
+    const time = DateTime.now().toFormat("yyyy-MM-dd-HH-mm-ss");
     if (!fs.existsSync(`./logs/${time}.txt`))
     {
       fs.writeFileSync(`./logs/${time}.txt`, e.toString());
@@ -31,7 +31,7 @@ export class Log
   writePayLog(playerId:string,recipientId:string,expence:string,balance:string,reason:string):void
   {
     this.i("進入writePayLog，撰寫PayLog");
-    const time = sd.format(new Date(), 'YYYY/MM/DD HH:mm:ss');
+    const time = DateTime.now().toFormat("yyyy/MM/dd HH:mm:ss");
     const logMessage = `時間: [${time}]，轉帳ID: [${playerId}]，被轉帳人ID: [${recipientId}]，費用: [$${expence}元]，餘額: [$${balance}元]，理由: [${reason}]\r\n`;
 
     if (fs.existsSync(`./pay_logs/logs.txt`)) 

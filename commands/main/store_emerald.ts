@@ -1,13 +1,13 @@
-import { Block } from 'prismarine-block';
+import type { Block } from 'prismarine-block';
 
-import { localizer } from "../../utils/localization";
-import { logger } from "../../utils/logger";
-import { LocationType, RestartNotifier, findReachableHomeLocation, findReachableWarpLocation, formatThousandths, formatTime, getDiscordStoreLogEmbed, getValidLocationType, get_window, settings } from "../../utils/util";
-import { bot } from "./bot";
-import { Item } from 'prismarine-item';
-import { discordManager } from '../communicate/dc';
-import { discardItemer } from '../../utils/discarditem';
-import { afkManager } from './afk';
+import { localizer } from "../../utils/localization.ts";
+import { logger } from "../../utils/logger.ts";
+import { LocationType, RestartNotifier, findReachableHomeLocation, findReachableWarpLocation, formatThousandths, formatTime, getDiscordStoreLogEmbed, getValidLocationType, get_window, settings } from "../../utils/util.ts";
+import { bot } from "./bot.ts";
+import type { Item } from 'prismarine-item';
+import { discordManager } from '../communicate/dc.ts';
+import { discardItemer } from '../../utils/discarditem.ts';
+import { afkManager } from './afk.ts';
 
 export let storeEmeraldManager:StoreEmeraldManager;
 
@@ -16,10 +16,11 @@ export let storeEmeraldManager:StoreEmeraldManager;
  * 1. 空的
  * 2. 有垃圾
  */
-const enum ShulkerBoxError {
-    Empty,
-    HasTrash
-}
+const ShulkerBoxError = {
+    Empty: 0,
+    HasTrash: 1,
+} as const;
+
 export class StoreLog {
     playerId:string
     totalTime:string

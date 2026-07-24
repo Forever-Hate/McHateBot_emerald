@@ -1,6 +1,6 @@
-import { localizer } from "../../utils/localization";
-import { logger } from "../../utils/logger";
-import { bot } from "./bot"
+import { localizer } from "../../utils/localization.ts";
+import { logger } from "../../utils/logger.ts";
+import { bot } from "./bot.ts"
 
 export let informer:Informer; 
 

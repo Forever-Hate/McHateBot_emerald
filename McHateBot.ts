@@ -1,20 +1,20 @@
 import * as dotenv from 'dotenv';
+import readline from 'node:readline';
+import { DateTime } from "luxon";
 
-import login, { bot, setIsOnline } from "./commands/main/bot";
-import setLocalization, { localizer } from "./utils/localization";
-import setLogger, { logger } from "./utils/logger";
-import setDiscordManager, { discordManager } from './commands/communicate/dc';
-import setDiscardItemer, { discardItemer } from './utils/discarditem';
-import setAnnouncer, { announcer } from './commands/publicity/announcement';
-import setInformer, { informer } from './commands/main/inform';
-import setFinancer, { financer } from './commands/main/finance';
-import setReplyManager, { replyManager } from './commands/main/reply';
-import { RestartNotifier, config, getConfig, getSettings, settings } from './utils/util';
-import setStoreEmeraldManager, { storeEmeraldManager } from './commands/main/store_emerald';
-import setAfkManager, { afkManager } from './commands/main/afk';
-import { Route, WebSocketClient,websocketClient } from './commands/websocket/websocket';
-import * as mineflayer from 'mineflayer';
-var tpsPlugin = require('mineflayer-tps')(mineflayer);
+import login, { bot, setIsOnline } from "./commands/main/bot.ts";
+import setLocalization, { localizer } from "./utils/localization.ts";
+import setLogger, { logger } from "./utils/logger.ts";
+import setDiscordManager, { discordManager } from './commands/communicate/dc.ts';
+import setDiscardItemer, { discardItemer } from './utils/discarditem.ts';
+import setAnnouncer, { announcer } from './commands/publicity/announcement.ts';
+import setInformer, { informer } from './commands/main/inform.ts';
+import setFinancer, { financer } from './commands/main/finance.ts';
+import setReplyManager, { replyManager } from './commands/main/reply.ts';
+import { RestartNotifier, config, getConfig, getSettings, settings } from './utils/util.ts';
+import setStoreEmeraldManager, { storeEmeraldManager } from './commands/main/store_emerald.ts';
+import setAfkManager, { afkManager } from './commands/main/afk.ts';
+import { Route, WebSocketClient,websocketClient } from './commands/websocket/websocket.ts';
 
 
 try {
@@ -24,7 +24,6 @@ try {
     getSettings();
     setLogger();
     setLocalization();
-    const sd = require('silly-datetime');//讀取silly-datetime模塊
     setDiscordManager();
     setDiscardItemer();
     setStoreEmeraldManager();
@@ -35,7 +34,6 @@ try {
     setReplyManager();
     const restartNotifier = RestartNotifier.getInstance();
 
-    const readline = require('readline');
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -62,7 +60,6 @@ try {
         const messge_regex = new RegExp(/\[(.*?) -> 您\] (.*)/)
         login();
 
-        bot.loadPlugin(tpsPlugin); //載入tps插件
         bot.once('spawn', () => {   //bot啟動時
             logger.i(`${localizer.format("LOADING_DONE")}`)
             showWelcomeBanner()
@@ -222,11 +219,6 @@ try {
                             // break
                             break
                         }
-                        case "tps":
-                        {
-                            bot.chat(`/m ${playerId} ${bot.getTps()}`)
-                            break;
-                        }
                         case "exit": //關閉bot
                             bot.chat(`/m ${playerId} ${localizer.format("SHUTDOWN")}`)
                             console.log(`Shutdown in 10 seconds`)
@@ -262,13 +254,13 @@ try {
         })
 
         bot.once('kicked', (reason) => {
-            let time1 = sd.format(new Date(), 'YYYY/MM/DD HH:mm:ss'); //獲得系統時間
+            let time1 = DateTime.now().toFormat("yyyy/MM/dd HH:mm:ss"); //獲得系統時間
             console.log(`[資訊] 客戶端被伺服器踢出 @${time1}   \n造成的原因:${reason}`)
         });
 
         //斷線自動重連
         bot.once('end', () => {
-            let time1 = sd.format(new Date(), 'YYYY/MM/DD HH:mm:ss'); //獲得系統時間
+            let time1 = DateTime.now().toFormat("yyyy/MM/dd HH:mm:ss"); //獲得系統時間
             console.log(`[資訊] 客戶端與伺服器斷線 ，10秒後將會自動重新連線...\n@${time1}`)
             if (settings.enable_trade_announce) 
             {
@@ -296,7 +288,9 @@ try {
     console.error(err)
     console.log('process exit in 10 sec...')
     new Promise(resolve => setTimeout(async () => {
-        logger.writeErrorLog(err)
+        if (logger) {
+            logger.writeErrorLog(err)
+        }
         process.exit()
     }, 10000))
 }
